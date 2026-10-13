@@ -31,8 +31,8 @@ bsToAd({ year: 2083, month: 4, day: 1 }); // { year: 2026, month: 7, day: 17 }
 - **Server-time-zone safe.** Conversions never go through a JavaScript
   `Date`. The answer is the same on a server in UTC, New York or Kathmandu.
 - **Backend-friendly.** It has 1-based months, immutable values, JSON output
-  as `"YYYY-MM-DD"`, typed errors, ESM and CommonJS builds, and TypeScript
-  types.
+  as `"YYYY-MM-DD"`, typed errors, ESM and CommonJS builds, TypeScript types,
+  and NestJS validation helpers.
 
 ## Install
 
@@ -143,6 +143,25 @@ fy.next().label; // '2084/85'
 See [docs/time-and-fiscal-year.md](docs/time-and-fiscal-year.md) for
 Kathmandu's clock history and querying records by BS day.
 
+### NestJS
+
+```ts
+import { IsBsDate, ParseBsDatePipe, ToBsDate } from 'bikram-sambat-date/nestjs';
+
+class SalesReportQueryDto {
+  @ToBsDate() // '2083-04-01' → BsDate (ValidationPipe with transform: true)
+  @IsBsDate() // otherwise 400: "from must be a BS date (YYYY-MM-DD)"
+  from!: BsDate;
+}
+
+@Get('sales/:date')
+salesOn(@Param('date', ParseBsDatePipe) date: BsDate) {}
+```
+
+The NestJS helpers live in a separate entry point. `@nestjs/common`,
+`class-validator` and `class-transformer` are optional peer dependencies,
+so the core stays dependency-free. See [docs/nestjs.md](docs/nestjs.md).
+
 ### Calendar facts
 
 ```ts
@@ -236,8 +255,8 @@ Keep the package up to date so that dates in the coming year are
    English and Nepali names and Devanagari digits.
 5. **Arithmetic (done):** add and diff days, months and years; month and
    year boundaries; `monthGrid`.
-6. **NestJS helpers:** `@IsBsDate()` validator, transformer and pipe, in a
-   separate entry point.
+6. **NestJS helpers (done):** `@IsBsDate()`, `@ToBsDate()` and
+   `ParseBsDatePipe` in `bikram-sambat-date/nestjs`.
 7. **Release:** CI, package checks, publish.
 
 ## Development
@@ -263,6 +282,8 @@ npm run data:calibrate # score the projection against published years
   parsing reads strings.
 - [docs/arithmetic.md](docs/arithmetic.md) explains adding and comparing
   dates, and month grids.
+- [docs/nestjs.md](docs/nestjs.md) covers validation, transformation, the
+  pipe, and how to store BS dates.
 
 ## License
 

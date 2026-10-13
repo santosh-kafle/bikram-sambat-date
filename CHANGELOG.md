@@ -8,6 +8,15 @@ All notable changes to this project are recorded here. The format follows
 
 ### Added
 
+- **`bikram-sambat-date/nestjs`:**
+  - `@IsBsDate({ pattern, strict })` validator, and `isBsDate`;
+  - `@ToBsDate({ pattern })`, which converts strings to `BsDate` and back
+    and works with `enableImplicitConversion`;
+  - `ParseBsDatePipe({ pattern, strict, optional })`, which answers 400 for
+    a bad date.
+  - `@nestjs/common`, `class-validator` and `class-transformer` are optional
+    peer dependencies.
+- **Docs:** `docs/nestjs.md`.
 - **Arithmetic on `BsDate`:**
   - `addDays`, `addMonths`, `addYears`; month and year additions clamp to
     the end of a shorter month;

@@ -34,6 +34,10 @@ src/
   format.ts                 format and parse patterns
   locale.ts                 month and weekday names, digits
   month-grid.ts             monthGrid
+  nestjs/                   the bikram-sambat-date/nestjs entry point
+    is-bs-date.ts           @IsBsDate(), isBsDate
+    to-bs-date.ts           @ToBsDate()
+    parse-bs-date.pipe.ts   ParseBsDatePipe
   errors.ts                 BikramSambatError and subclasses
   core/
     gregorian.ts            Gregorian ↔ day number, weekday
@@ -92,3 +96,6 @@ years plus a walk of at most twelve months.
   `BikramSambatError`.
 - **Zero runtime dependencies.** The package ships ESM and CommonJS builds
   with type definitions, and is marked side-effect free for tree shaking.
+  The NestJS helpers are a second entry point with optional peer
+  dependencies. Both entry points share one build chunk, so a `BsDate` from
+  either is an instance of the same class.
