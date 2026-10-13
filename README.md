@@ -1,5 +1,7 @@
 # bikram-sambat-date
 
+[![CI](https://github.com/santosh-kafle/bikram-sambat-date/actions/workflows/ci.yml/badge.svg)](https://github.com/santosh-kafle/bikram-sambat-date/actions/workflows/ci.yml)
+
 Accurate, time-zone-safe **Bikram Sambat (BS) ↔ Gregorian (AD)** date
 conversion for Node.js backends. Zero dependencies.
 
@@ -10,8 +12,9 @@ adToBs({ year: 2026, month: 4, day: 14 }).toString(); // '2083-01-01'
 bsToAd({ year: 2083, month: 4, day: 1 }); // { year: 2026, month: 7, day: 17 }
 ```
 
-> **Status:** early development (0.1.0), not yet published to npm. See the
-> [roadmap](#roadmap).
+> **Status:** pre-1.0. The API may still change in minor releases. Calendars
+> are published up to BS 2083; update the package each year to get the
+> newly published year.
 
 ## Why another converter
 
@@ -40,7 +43,8 @@ bsToAd({ year: 2083, month: 4, day: 1 }); // { year: 2026, month: 7, day: 17 }
 npm install bikram-sambat-date
 ```
 
-Requires Node.js 22 or newer.
+Requires Node.js 22 or newer. No dependencies; about 10 KB gzipped, and the
+optional NestJS helpers add 1 KB.
 
 ## Usage
 
@@ -257,18 +261,23 @@ Keep the package up to date so that dates in the coming year are
    year boundaries; `monthGrid`.
 6. **NestJS helpers (done):** `@IsBsDate()`, `@ToBsDate()` and
    `ParseBsDatePipe` in `bikram-sambat-date/nestjs`.
-7. **Release:** CI, package checks, publish.
+7. **Release readiness (done):** CI on Node 22, 24 and 26; package checks;
+   [RELEASING.md](RELEASING.md).
 
 ## Development
 
 ```sh
 npm install
-npm run check      # typecheck, lint, format check, tests
-npm run test:tz    # tests under several time zones
-npm run build      # dist/: ESM, CommonJS and type definitions
-npm run data:build # rebuild the calendar table from data/
+npm run check          # typecheck, lint, format, data up to date, tests
+npm run test:tz        # tests under several time zones
+npm run build          # dist/: ESM, CommonJS and type definitions
+npm run check:package  # publint and are-the-types-wrong
+npm run data:build     # rebuild the calendar table from data/
 npm run data:calibrate # score the projection against published years
 ```
+
+[RELEASING.md](RELEASING.md) covers releases, including the yearly one that
+publishes a new calendar year.
 
 - [docs/architecture.md](docs/architecture.md) explains how conversion works
   and how the code is laid out.

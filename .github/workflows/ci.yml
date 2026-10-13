@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Node ${{ matrix.node }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Node 22 and 24 are LTS; 26 is current. package.json requires >=22.
+        node: [22, 24, 26]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      # Typecheck, lint, formatting, calendar data up to date, tests.
+      - run: npm run check
+      # The same tests with the process in three different time zones.
+      - run: npm run test:tz
+      - run: npm run build
+      # publint and are-the-types-wrong on the packed tarball.
+      - run: npm run check:package

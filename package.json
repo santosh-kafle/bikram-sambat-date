@@ -9,9 +9,20 @@
     "bs-to-ad",
     "ad-to-bs",
     "date-converter",
+    "fiscal-year",
+    "devanagari",
     "nepal",
+    "nestjs",
     "typescript"
   ],
+  "homepage": "https://github.com/santosh-kafle/bikram-sambat-date#readme",
+  "bugs": {
+    "url": "https://github.com/santosh-kafle/bikram-sambat-date/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/santosh-kafle/bikram-sambat-date.git"
+  },
   "license": "MIT",
   "author": "Santosh Kafle <santoshkafle.dev@gmail.com>",
   "type": "module",
@@ -19,6 +30,13 @@
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "nestjs": [
+        "./dist/nestjs/index.d.ts"
+      ]
+    }
+  },
   "exports": {
     ".": {
       "import": {
@@ -61,8 +79,10 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "check": "npm run typecheck && npm run lint && npm run format:check && npm test",
-    "prepublishOnly": "npm run check && npm run build"
+    "check": "npm run typecheck && npm run lint && npm run format:check && npm run data:check && npm test",
+    "prepublishOnly": "npm run check && npm run build",
+    "data:check": "tsx scripts/build-calendar.ts --check && tsx scripts/calibrate.ts --check",
+    "check:package": "publint && attw --pack ."
   },
   "peerDependencies": {
     "@nestjs/common": ">=10.0.0",
@@ -81,6 +101,7 @@
     }
   },
   "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.5",
     "@eslint/js": "^9.39.5",
     "@nestjs/common": "^11.2.7",
     "@types/node": "^22.20.5",
@@ -89,6 +110,7 @@
     "eslint": "^9.39.5",
     "eslint-config-prettier": "^10.1.8",
     "prettier": "^3.9.10",
+    "publint": "^0.3.25",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.2",
     "tsup": "^8.5.1",

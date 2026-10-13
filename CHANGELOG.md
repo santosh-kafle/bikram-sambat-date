@@ -8,6 +8,13 @@ All notable changes to this project are recorded here. The format follows
 
 ### Added
 
+- **Release tooling:**
+  - CI on Node 22, 24 and 26;
+  - `npm run check:package` (publint and are-the-types-wrong);
+  - `npm run data:check`;
+  - `RELEASING.md`.
+- **Types under `"moduleResolution": "node"`:** `typesVersions` makes
+  `bikram-sambat-date/nestjs` resolve there too, the NestJS default.
 - **`bikram-sambat-date/nestjs`:**
   - `@IsBsDate({ pattern, strict })` validator, and `isBsDate`;
   - `@ToBsDate({ pattern })`, which converts strings to `BsDate` and back
