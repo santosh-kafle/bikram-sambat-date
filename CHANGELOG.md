@@ -6,92 +6,84 @@ All notable changes to this project are recorded here. The format follows
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-10-13
+
+First release.
+
 ### Added
 
-- **Release tooling:**
-  - CI on Node 22, 24 and 26;
-  - `npm run check:package` (publint and are-the-types-wrong);
-  - `npm run data:check`;
-  - `RELEASING.md`.
-- **Types under `"moduleResolution": "node"`:** `typesVersions` makes
-  `bikram-sambat-date/nestjs` resolve there too, the NestJS default.
-- **`bikram-sambat-date/nestjs`:**
-  - `@IsBsDate({ pattern, strict })` validator, and `isBsDate`;
-  - `@ToBsDate({ pattern })`, which converts strings to `BsDate` and back
-    and works with `enableImplicitConversion`;
-  - `ParseBsDatePipe({ pattern, strict, optional })`, which answers 400 for
-    a bad date.
-  - `@nestjs/common`, `class-validator` and `class-transformer` are optional
-    peer dependencies.
-- **Docs:** `docs/nestjs.md`.
-- **Arithmetic on `BsDate`:**
-  - `addDays`, `addMonths`, `addYears`; month and year additions clamp to
-    the end of a shorter month;
-  - `diffInDays`, `diffInMonths`, `diffInYears`;
-  - `startOfMonth`, `endOfMonth`, `startOfYear`, `endOfYear`;
-  - `daysInMonth`, `daysInYear` and `dayOfYear`.
-- **`monthGrid(year, month, { weekStartsOn })`:** a month laid out in
-  weeks for calendars and reports.
-- **Docs:** `docs/arithmetic.md`.
-- **Formatting:** `BsDate#format(pattern?, { locale })`.
-  - Tokens: `YYYY YY MMMM MMM MM M DD D dddd ddd d` and `[literal]`.
-  - Locales `en` and `ne`; `ne` writes digits in Devanagari. Nepali names
-    match Hamro Patro.
-- **Parsing:** `BsDate.parse(text, pattern?, options?)`.
-  - It is strict about structure and accepts ASCII or Devanagari digits.
-  - English and Nepali names match in any case and common spellings.
-  - A weekday in the string is checked against the date.
-- **Digits:** `toDevanagariDigits` and `toAsciiDigits`, and the `Locale` and
-  `FormatOptions` types.
-- **Docs:** `docs/formatting.md`.
-- **Kathmandu time:** `BsDate.fromInstant(date | epochMs)`, `BsDate.today()`
-  and `BsDate#toInstant()`.
-  - Instants are read in Asia/Kathmandu whatever the server's time zone.
+- **Conversion** between Bikram Sambat and Gregorian dates.
+  - `adToBs` and `bsToAd`.
+  - `BsDate`, an immutable date with 1-based months. It provides `of`,
+    `fromAd`, `toAd`, `weekday`, `equals`, `isBefore`, `isAfter` and
+    `compare`, and its `toString()`/`toJSON()` give `"YYYY-MM-DD"`.
+  - Conversions use integer day numbers, never a JavaScript `Date`, so
+    results do not depend on the server's time zone.
+- **Published calendar table, BS 1975–2083** (AD 1918-04-13 to 2027-04-13).
+  - It is built by cross-checking six open-source month-length tables
+    against Hamro Patro.
+  - All 1,008 month starts from 2000 to 2083 match Hamro Patro.
+  - Every disputed year has a written decision; see `data/REPORT.md` and
+    `docs/data-sources.md`.
+- **Projected years, BS 2084–2200** (to AD 2144-04-15).
+  - They are computed at build time with the Sūrya Siddhānta and Nepal's
+    month rule: a month starts on the civil day of its saṅkrānti, with the
+    puṇya-kāla exceptions for Shrawan and Magh. The package ships no
+    astronomy code.
+  - Measured on the published years, the projection gets 1,297 of 1,308
+    month starts right (99.2%). Every miss falls in a month flagged
+    uncertain; see `data/ACCURACY.md` and `docs/projection.md`.
+  - `BsDate.confidence` (`'published' | 'projected' | 'uncertain'`) and
+    `BsDate.isProjected` say how far a date can be trusted.
+  - `{ strict: true }` on `BsDate.of`, `fromAd`, `fromInstant`, `parse`,
+    `adToBs` and `bsToAd` rejects projected dates with
+    `ProjectedDateError`.
+- **Kathmandu time.**
+  - `BsDate.fromInstant(date | epochMs)`, `BsDate.today()` and
+    `BsDate#toInstant()` read instants in Asia/Kathmandu, whatever the
+    server's time zone.
   - They follow Kathmandu's historical UTC offsets: +5:41:16, then +5:30
     from 1920, then +5:45 from 1986.
-- **Fiscal year:** `FiscalYear` (`of`, `parse`, `containing`, `contains`,
-  `next`, `previous`, `label`, `firstDay`, `lastDay`) and `fiscalYearOf`.
-  It covers fiscal years 1975/76–2199/00.
-- **`DateParseError`**, for strings in the wrong format.
-- **Docs:** `docs/time-and-fiscal-year.md`.
-- **Projected years** BS 2084–2200 (AD 2027-04-14 to 2144-04-15).
-  - They are computed at build time with the Sūrya Siddhānta and Nepal's month
-    rule: the civil day of the saṅkrānti, with the puṇya-kāla exceptions for
-    Shrawan and Magh.
-  - On the published years the projection gets 1,297 of 1,308 month starts
-    right (99.2%).
-  - The engine ships no code in the package.
-- **`BsDate.confidence`** (`'published' | 'projected' | 'uncertain'`) and
-  `BsDate.isProjected`.
-- **`{ strict: true }`** on `BsDate.of`, `BsDate.fromAd`, `adToBs` and
-  `bsToAd`. It rejects projected dates with the new `ProjectedDateError`,
-  which extends `DateOutOfRangeError`.
-- **`BS_LAST_PUBLISHED_YEAR`**, and the types `DateConfidence`,
-  `ConversionOptions` and `DateRange`.
-- **`npm run data:calibrate`** scores the projection against the published
-  years and writes `data/ACCURACY.md`.
-- **Docs:** `docs/projection.md`.
-- **Calendar table** for BS 1975–2083 (AD 1918-04-13 to 2027-04-13).
-  - It cross-checks six open-source month-length tables against Hamro Patro.
-  - Every disputed year has a recorded decision, and the build fails on any
-    new disagreement.
-- **Data tooling:**
-  - `npm run data:build` builds the table and `data/REPORT.md`;
-  - `npm run data:fetch-hamropatro` refreshes the reference snapshot.
-- **Conversion:** `adToBs` and `bsToAd`. They use integer day numbers, so
-  results do not depend on the server time zone.
-- **`BsDate`:** an immutable date with:
-  - 1-based months;
-  - `weekday`, `toAd()`, `equals`, `isBefore`, `isAfter` and `compare`;
-  - `"YYYY-MM-DD"` output from `toString()` and `toJSON()`.
+- **Fiscal year.**
+  - `FiscalYear` (`of`, `parse`, `containing`, `contains`, `next`,
+    `previous`, `label`, `firstDay`, `lastDay`) and `fiscalYearOf`.
+  - A fiscal year runs from 1 Shrawan to the last day of Asar. Fiscal years
+    1975/76–2199/00 are supported.
+- **Formatting and parsing.**
+  - `BsDate#format(pattern?, { locale })`, with tokens
+    `YYYY YY MMMM MMM MM M DD D dddd ddd d` and `[literal]`.
+  - Locales `en` and `ne`. `ne` uses Devanagari digits and the month and
+    weekday names Hamro Patro shows.
+  - `BsDate.parse(text, pattern?)` is strict about structure. It accepts
+    ASCII or Devanagari digits and English or Nepali names in common
+    spellings, and checks any weekday in the string against the date.
+  - `toDevanagariDigits` and `toAsciiDigits`.
+- **Arithmetic.**
+  - `addDays`, `addMonths` and `addYears` (month and year additions clamp
+    to the end of a shorter month).
+  - `diffInDays`, `diffInMonths` and `diffInYears`, which can be used for
+    ages.
+  - `startOfMonth`, `endOfMonth`, `startOfYear` and `endOfYear`.
+  - `daysInMonth`, `daysInYear` and `dayOfYear`.
+  - `monthGrid(year, month, { weekStartsOn })` lays a month out in weeks.
 - **Calendar helpers:** `daysInBsMonth`, `daysInBsYear`, `isValidBsDate`,
-  `supportedRange`, `BS_MIN_YEAR` and `BS_MAX_YEAR`.
-- **Errors:** `BikramSambatError`, with the subclasses `DateOutOfRangeError`
-  and `InvalidDateError`.
-- **Builds:** ESM and CommonJS, with TypeScript types.
+  `supportedRange()` (published and projected ranges), `BS_MIN_YEAR`,
+  `BS_LAST_PUBLISHED_YEAR` and `BS_MAX_YEAR`.
+- **Errors:** `BikramSambatError`, with the subclasses `DateOutOfRangeError`,
+  `ProjectedDateError`, `InvalidDateError` and `DateParseError`.
+- **NestJS helpers** in `bikram-sambat-date/nestjs`.
+  - `@IsBsDate()` and `isBsDate` validate BS dates.
+  - `@ToBsDate()` converts DTO strings to `BsDate` and back, and works with
+    `enableImplicitConversion`.
+  - `ParseBsDatePipe` parses route and query parameters and answers
+    400 Bad Request for a bad date.
+  - `@nestjs/common`, `class-validator` and `class-transformer` are
+    optional peer dependencies.
+- **Packaging.**
+  - ESM and CommonJS builds with TypeScript types. The types also resolve
+    under `"moduleResolution": "node"`.
+  - No runtime dependencies; the core is about 10 KB gzipped.
+  - Requires Node.js 22 or newer.
 
-### Changed
-
-- `BS_MAX_YEAR` is now 2200, the end of the projected range.
-- `supportedRange()` returns `{ published, projected }`, each with `bs` and
-  `ad` bounds.
+[Unreleased]: https://github.com/santosh-kafle/bikram-sambat-date/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/santosh-kafle/bikram-sambat-date/releases/tag/v0.1.0
