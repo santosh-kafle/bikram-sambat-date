@@ -21,10 +21,13 @@ bsToAd({ year: 2083, month: 4, day: 1 }); // { year: 2026, month: 7, day: 17 }
   Every disagreement is recorded and decided in writing, and the build fails
   on any new one. See [docs/data-sources.md](docs/data-sources.md) and the
   generated [data report](data/REPORT.md).
-- **Honest about range.** Calendars are published only about a year ahead.
-  Other libraries ship guesses for later years as if they were fact, and
-  those guesses have often been wrong. This library covers the published
-  years and throws past them.
+- **Honest about the future.** Calendars are published only about a year
+  ahead. Other libraries ship guesses for later years as if they were fact,
+  and those guesses have often been wrong. This library projects later years
+  from the Sūrya Siddhānta, the astronomy Nepal's calendar committee uses. It
+  is calibrated to 99.2% of published month starts, and every date tells you
+  whether it is `published`, `projected` or `uncertain`. See
+  [docs/projection.md](docs/projection.md).
 - **Server-time-zone safe.** Conversions never go through a JavaScript
   `Date`. The answer is the same on a server in UTC, New York or Kathmandu.
 - **Backend-friendly.** It has 1-based months, immutable values, JSON output
@@ -89,7 +92,36 @@ import {
 daysInBsMonth(2083, 1); // 31
 daysInBsYear(2083); // 365
 isValidBsDate(2083, 1, 32); // false; never throws
-supportedRange(); // first and last convertible dates, in BS and AD
+supportedRange(); // { published, projected }: first and last dates of each, in BS and AD
+```
+
+### Projected dates
+
+Dates after the last published calendar (BS 2083) convert normally. Each
+`BsDate` says how far it can be trusted:
+
+```ts
+import { adToBs, BsDate } from 'bikram-sambat-date';
+
+BsDate.of(2083, 6, 27).confidence; // 'published'
+
+const later = adToBs({ year: 2035, month: 1, day: 1 });
+later.isProjected; // true
+later.confidence; // 'projected' or 'uncertain'
+```
+
+| `confidence` | Meaning                                                          |
+| ------------ | ---------------------------------------------------------------- |
+| `published`  | From a published calendar.                                       |
+| `projected`  | Computed. On the published years, such months were always right. |
+| `uncertain`  | Computed, but the month could start or end a day off.            |
+
+Where only published dates will do, such as legal or tax documents, pass
+`{ strict: true }`. Projected dates then throw `ProjectedDateError`:
+
+```ts
+adToBs({ year: 2035, month: 1, day: 1 }, { strict: true }); // throws ProjectedDateError
+BsDate.of(2090, 1, 1, { strict: true }); // throws ProjectedDateError
 ```
 
 ### Errors
@@ -97,10 +129,12 @@ supportedRange(); // first and last convertible dates, in BS and AD
 | Error                 | When                                                             |
 | --------------------- | ---------------------------------------------------------------- |
 | `DateOutOfRangeError` | The date is outside the supported range.                         |
+| `ProjectedDateError`  | With `{ strict: true }`: the date is projected, not published.   |
 | `InvalidDateError`    | The date does not exist, such as 32 Baisakh 2083 or 30 February. |
 
-Both extend `BikramSambatError`, so you can catch either one, or the base
-class for both.
+All extend `BikramSambatError`. `ProjectedDateError` also extends
+`DateOutOfRangeError`, so code that handles out-of-range dates handles it
+too.
 
 ```ts
 import { BikramSambatError, BsDate } from 'bikram-sambat-date';
@@ -117,20 +151,22 @@ try {
 
 ## Supported range
 
-**BS 1975-01-01 to 2083-12-30** (AD 1918-04-13 to 2027-04-13).
+|               | BS                       | AD                       |
+| ------------- | ------------------------ | ------------------------ |
+| **Published** | 1975-01-01 to 2083-12-30 | 1918-04-13 to 2027-04-13 |
+| **Projected** | 2084-01-01 to 2200-12-31 | 2027-04-14 to 2144-04-15 |
 
-2083 is the latest year with a published calendar. Each new year will be
-added in a release once its calendar is approved; see
+Each newly published year moves from projected to published in a release;
+see
 [adding a year](docs/data-sources.md#adding-a-year-when-a-new-calendar-is-published).
-For later dates, a Sūrya Siddhānta projection, clearly flagged as projected,
-is planned. See the [roadmap](#roadmap).
+Keep the package up to date so that dates in the coming year are
+`published`.
 
 ## Roadmap
 
-1. **Foundation (this release):** cross-checked table, conversion and
-   `BsDate`.
-2. **Projected range:** Sūrya Siddhānta month starts for years after the
-   table, opt-in and flagged as projected.
+1. **Foundation (done):** cross-checked table, conversion and `BsDate`.
+2. **Projected range (done):** Sūrya Siddhānta month starts through BS
+   2200, with `confidence` and `{ strict: true }`.
 3. **Kathmandu time and fiscal year:** convert instants in Asia/Kathmandu;
    Nepal fiscal year helpers (Shrawan 1 start).
 4. **Formatting and parsing:** format tokens, Nepali month and weekday
@@ -149,12 +185,15 @@ npm run check      # typecheck, lint, format check, tests
 npm run test:tz    # tests under several time zones
 npm run build      # dist/: ESM, CommonJS and type definitions
 npm run data:build # rebuild the calendar table from data/
+npm run data:calibrate # score the projection against published years
 ```
 
 - [docs/architecture.md](docs/architecture.md) explains how conversion works
   and how the code is laid out.
 - [docs/data-sources.md](docs/data-sources.md) explains where the calendar
   data comes from and how to update it.
+- [docs/projection.md](docs/projection.md) explains how years after the
+  published calendars are computed, and how accurate that is.
 
 ## License
 

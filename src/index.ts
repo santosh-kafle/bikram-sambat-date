@@ -3,20 +3,28 @@
  *
  * @packageDocumentation
  */
-export { BsDate } from './bs-date.js';
+export { BsDate, type ConversionOptions } from './bs-date.js';
 export {
   adToBs,
   bsToAd,
+  BS_LAST_PUBLISHED_YEAR,
   BS_MAX_YEAR,
   BS_MIN_YEAR,
   supportedRange,
   type BsDateFields,
+  type DateRange,
   type SupportedRange,
 } from './convert.js';
 export type { AdDate } from './core/gregorian.js';
-export { daysInBsMonth, daysInBsYear, isValidBsDate } from './core/table.js';
+export {
+  daysInBsMonth,
+  daysInBsYear,
+  isValidBsDate,
+  type DateConfidence,
+} from './core/table.js';
 export {
   BikramSambatError,
   DateOutOfRangeError,
   InvalidDateError,
+  ProjectedDateError,
 } from './errors.js';

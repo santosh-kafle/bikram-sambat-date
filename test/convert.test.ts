@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import {
   adToBs,
+  BS_LAST_PUBLISHED_YEAR,
   BS_MAX_YEAR,
   BS_MIN_YEAR,
   bsToAd,
@@ -42,8 +43,9 @@ describe('Hamro Patro reference', () => {
       'utf8',
     ),
   ) as { months: Record<string, { days: number; startAd: string }> };
+  // Later years in the reference are Hamro Patro's own projections.
   const months = Object.entries(reference.months).filter(
-    ([key]) => Number(key.slice(0, 4)) <= BS_MAX_YEAR,
+    ([key]) => Number(key.slice(0, 4)) <= BS_LAST_PUBLISHED_YEAR,
   );
 
   it('covers some of the table', () => {
@@ -58,21 +60,40 @@ describe('Hamro Patro reference', () => {
 });
 
 describe('supported range', () => {
-  it('runs from 1 Baisakh of the first year to the end of the last', () => {
-    const range = supportedRange();
-    expect(range.bs.min.toString()).toBe(`${BS_MIN_YEAR}-01-01`);
-    expect(range.bs.max.year).toBe(BS_MAX_YEAR);
-    expect(range.bs.max.month).toBe(12);
-    expect(range.ad.min).toEqual(bsToAd(range.bs.min));
-    expect(range.ad.max).toEqual(bsToAd(range.bs.max));
+  it('has published years, then projected years', () => {
+    const { published, projected } = supportedRange();
+    expect(published.bs.min.toString()).toBe(`${BS_MIN_YEAR}-01-01`);
+    expect(published.bs.max.year).toBe(BS_LAST_PUBLISHED_YEAR);
+    expect(published.bs.max.month).toBe(12);
+    expect(projected.bs.min.toString()).toBe(
+      `${BS_LAST_PUBLISHED_YEAR + 1}-01-01`,
+    );
+    expect(projected.bs.max.year).toBe(BS_MAX_YEAR);
+    expect(projected.bs.max.month).toBe(12);
+    for (const range of [published, projected]) {
+      expect(range.ad.min).toEqual(bsToAd(range.bs.min));
+      expect(range.ad.max).toEqual(bsToAd(range.bs.max));
+    }
+  });
+
+  it('covers 1918 to 2144 AD', () => {
+    const { published, projected } = supportedRange();
+    expect(published.ad.min).toEqual({ year: 1918, month: 4, day: 13 });
+    expect(published.ad.max).toEqual({ year: 2027, month: 4, day: 13 });
+    expect(projected.ad.min).toEqual({ year: 2027, month: 4, day: 14 });
+    expect(projected.ad.max.year).toBe(2144);
   });
 
   it('throws just outside it', () => {
-    const { ad: adRange } = supportedRange();
-    const before = { ...adRange.min, day: adRange.min.day - 1 };
-    const after = { ...adRange.max, day: adRange.max.day + 1 };
-    expect(() => adToBs(before)).toThrow(DateOutOfRangeError);
-    expect(() => adToBs(after)).toThrow(DateOutOfRangeError);
+    const { published, projected } = supportedRange();
+    const { min } = published.ad;
+    const { max } = projected.ad;
+    expect(() => adToBs({ ...min, day: min.day - 1 })).toThrow(
+      DateOutOfRangeError,
+    );
+    expect(() => adToBs({ ...max, day: max.day + 1 })).toThrow(
+      DateOutOfRangeError,
+    );
   });
 });
 

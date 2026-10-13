@@ -1,11 +1,13 @@
-import { BsDate } from './bs-date.js';
+import { BsDate, type ConversionOptions } from './bs-date.js';
 import { type AdDate, dayNumberToGregorian } from './core/gregorian.js';
 import {
+  BS_LAST_PUBLISHED_YEAR,
   BS_MAX_YEAR,
   BS_MIN_YEAR,
   bsToDayNumber,
   tableDayNumberRange,
 } from './core/table.js';
+import { ProjectedDateError } from './errors.js';
 
 /** A BS date as plain fields. `month` is 1–12 (Baisakh is 1). */
 export interface BsDateFields {
@@ -22,10 +24,12 @@ export interface BsDateFields {
  * ```
  *
  * @throws {InvalidDateError} if the Gregorian date does not exist.
- * @throws {DateOutOfRangeError} if the date is outside the table.
+ * @throws {DateOutOfRangeError} if the date is outside the supported range.
+ * @throws {ProjectedDateError} with `{ strict: true }`, if the date falls in a
+ *   projected year.
  */
-export function adToBs(ad: AdDate): BsDate {
-  return BsDate.fromAd(ad);
+export function adToBs(ad: AdDate, options: ConversionOptions = {}): BsDate {
+  return BsDate.fromAd(ad, options);
 }
 
 /**
@@ -36,30 +40,53 @@ export function adToBs(ad: AdDate): BsDate {
  * ```
  *
  * @throws {InvalidDateError} if the BS date does not exist.
- * @throws {DateOutOfRangeError} if the year is outside the table.
+ * @throws {DateOutOfRangeError} if the year is outside the supported range.
+ * @throws {ProjectedDateError} with `{ strict: true }`, if the year is
+ *   projected.
  */
-export function bsToAd(bs: BsDateFields): AdDate {
-  return dayNumberToGregorian(bsToDayNumber(bs.year, bs.month, bs.day));
+export function bsToAd(
+  bs: BsDateFields,
+  options: ConversionOptions = {},
+): AdDate {
+  const dayNumber = bsToDayNumber(bs.year, bs.month, bs.day);
+  if (options.strict && bs.year > BS_LAST_PUBLISHED_YEAR) {
+    throw new ProjectedDateError(
+      `${bs.year} BS is projected; published calendars end with ${BS_LAST_PUBLISHED_YEAR}`,
+    );
+  }
+  return dayNumberToGregorian(dayNumber);
 }
 
-/** The dates the calendar table covers, in both calendars. */
-export interface SupportedRange {
-  readonly bs: { readonly min: BsDateFields; readonly max: BsDateFields };
+/** A span of dates, in both calendars. */
+export interface DateRange {
+  readonly bs: { readonly min: BsDate; readonly max: BsDate };
   readonly ad: { readonly min: AdDate; readonly max: AdDate };
 }
 
-/** The first and last dates the library can convert. */
+/** The dates the library covers. */
+export interface SupportedRange {
+  /** Dates from published calendars. */
+  readonly published: DateRange;
+  /** Dates projected by the Sūrya Siddhānta, after the published ones. */
+  readonly projected: DateRange;
+}
+
+/** The first and last dates the library can convert, published and projected. */
 export function supportedRange(): SupportedRange {
   const { first, last } = tableDayNumberRange();
-  const min = dayNumberToGregorian(first);
-  const max = dayNumberToGregorian(last);
+  const firstProjected = bsToDayNumber(BS_LAST_PUBLISHED_YEAR + 1, 1, 1);
+  const range = (from: number, to: number): DateRange => {
+    const min = dayNumberToGregorian(from);
+    const max = dayNumberToGregorian(to);
+    return {
+      bs: { min: BsDate.fromAd(min), max: BsDate.fromAd(max) },
+      ad: { min, max },
+    };
+  };
   return {
-    bs: {
-      min: BsDate.fromAd(min),
-      max: BsDate.fromAd(max),
-    },
-    ad: { min, max },
+    published: range(first, firstProjected - 1),
+    projected: range(firstProjected, last),
   };
 }
 
-export { BS_MAX_YEAR, BS_MIN_YEAR };
+export { BS_LAST_PUBLISHED_YEAR, BS_MAX_YEAR, BS_MIN_YEAR };

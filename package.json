@@ -42,6 +42,7 @@
   "scripts": {
     "build": "tsup",
     "data:build": "tsx scripts/build-calendar.ts",
+    "data:calibrate": "tsx scripts/calibrate.ts",
     "data:fetch-hamropatro": "tsx scripts/fetch-hamropatro.ts",
     "test": "vitest run",
     "test:watch": "vitest",

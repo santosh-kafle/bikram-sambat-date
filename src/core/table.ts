@@ -3,18 +3,35 @@
  * and the mapping between BS dates and RD day numbers.
  *
  * The data lives in `src/data/calendar.generated.ts`, which
- * `npm run data:build` writes from the sources in `data/`. See
- * `docs/data-sources.md`.
+ * `npm run data:build` writes from the sources in `data/`. Years up to
+ * `BS_LAST_PUBLISHED_YEAR` follow published calendars (see
+ * `docs/data-sources.md`); later years are projected (see
+ * `docs/projection.md`).
  */
 import {
   BS_EPOCH_DAY_NUMBER,
+  BS_LAST_PUBLISHED_YEAR,
   BS_MAX_YEAR,
   BS_MIN_YEAR,
   MONTH_LENGTHS,
+  UNCERTAIN_MONTH_STARTS,
 } from '../data/calendar.generated.js';
 import { DateOutOfRangeError, InvalidDateError } from '../errors.js';
 
-export { BS_MAX_YEAR, BS_MIN_YEAR };
+export { BS_LAST_PUBLISHED_YEAR, BS_MAX_YEAR, BS_MIN_YEAR };
+
+/**
+ * How far a BS date can be trusted:
+ *
+ * - `published`: the month is in a calendar the Nepal Panchanga Nirnayak
+ *   Samiti has published.
+ * - `projected`: the month is computed by the Sūrya Siddhānta for a year not
+ *   yet published. Measured on the published years, such months were right
+ *   every time.
+ * - `uncertain`: a projected month whose first or last day could move by one
+ *   day, because a saṅkrānti falls close to a boundary of the month rule.
+ */
+export type DateConfidence = 'published' | 'projected' | 'uncertain';
 
 /**
  * `yearStarts[i]` is the day number of 1 Baisakh of `BS_MIN_YEAR + i`; the
@@ -32,6 +49,23 @@ function getYearStarts(): Int32Array {
     yearStarts = starts;
   }
   return yearStarts;
+}
+
+let uncertainStarts: ReadonlySet<string> | undefined;
+
+/**
+ * The confidence of every date in BS month `month` of `year`. A projected
+ * month is uncertain if its own start or the next month's start is flagged:
+ * either can shift some of its dates by a day.
+ */
+export function monthConfidence(year: number, month: number): DateConfidence {
+  if (year <= BS_LAST_PUBLISHED_YEAR) return 'published';
+  uncertainStarts ??= new Set(UNCERTAIN_MONTH_STARTS);
+  const key = (y: number, m: number) => `${y}-${String(m).padStart(2, '0')}`;
+  const next = month === 12 ? key(year + 1, 1) : key(year, month + 1);
+  return uncertainStarts.has(key(year, month)) || uncertainStarts.has(next)
+    ? 'uncertain'
+    : 'projected';
 }
 
 /** The first and last day numbers the table covers. */

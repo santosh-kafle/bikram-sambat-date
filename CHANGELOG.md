@@ -8,6 +8,23 @@ All notable changes to this project are recorded here. The format follows
 
 ### Added
 
+- **Projected years** BS 2084–2200 (AD 2027-04-14 to 2144-04-15).
+  - They are computed at build time with the Sūrya Siddhānta and Nepal's month
+    rule: the civil day of the saṅkrānti, with the puṇya-kāla exceptions for
+    Shrawan and Magh.
+  - On the published years the projection gets 1,297 of 1,308 month starts
+    right (99.2%).
+  - The engine ships no code in the package.
+- **`BsDate.confidence`** (`'published' | 'projected' | 'uncertain'`) and
+  `BsDate.isProjected`.
+- **`{ strict: true }`** on `BsDate.of`, `BsDate.fromAd`, `adToBs` and
+  `bsToAd`. It rejects projected dates with the new `ProjectedDateError`,
+  which extends `DateOutOfRangeError`.
+- **`BS_LAST_PUBLISHED_YEAR`**, and the types `DateConfidence`,
+  `ConversionOptions` and `DateRange`.
+- **`npm run data:calibrate`** scores the projection against the published
+  years and writes `data/ACCURACY.md`.
+- **Docs:** `docs/projection.md`.
 - **Calendar table** for BS 1975–2083 (AD 1918-04-13 to 2027-04-13).
   - It cross-checks six open-source month-length tables against Hamro Patro.
   - Every disputed year has a recorded decision, and the build fails on any
@@ -26,3 +43,9 @@ All notable changes to this project are recorded here. The format follows
 - **Errors:** `BikramSambatError`, with the subclasses `DateOutOfRangeError`
   and `InvalidDateError`.
 - **Builds:** ESM and CommonJS, with TypeScript types.
+
+### Changed
+
+- `BS_MAX_YEAR` is now 2200, the end of the projected range.
+- `supportedRange()` returns `{ published, projected }`, each with `bs` and
+  `ad` bounds.

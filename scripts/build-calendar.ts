@@ -3,282 +3,108 @@
  * in data/. Run with `npm run data:build`; add `-- --check` to fail instead
  * of writing when the outputs are stale (for CI).
  *
- * For each BS year from `minYear` to `maxYear` the month lengths come from:
- *   1. the reference (Hamro Patro) when it has all twelve months, or else
- *   2. the source tables, when every one that covers the year agrees, or else
- *   3. the source named in `resolutions` in data/calendar.config.json.
- * Any other disagreement fails the build, as does a resolution for a year
- * that no longer needs one. Every year must have 29–32 day months and 365
- * or 366 days, and every month start the reference records must match the
- * table. See docs/data-sources.md.
+ * The table has two parts:
+ *   - published years, `minYear`–`maxYear`, decided and checked by
+ *     scripts/lib/verified-table.ts (see docs/data-sources.md);
+ *   - projected years, `maxYear + 1`–`projection.maxYear`, whose month starts
+ *     come from the Sūrya Siddhānta engine in scripts/astro/ with the
+ *     parameters in `projection` (see docs/projection.md).
+ * The build fails if the projection does not continue the published table
+ * seamlessly, or produces an impossible month or year, or a New Year's Day
+ * more than a day from where the mean sidereal year puts it.
  */
-import { readFile, writeFile } from 'node:fs/promises';
+import { writeFile } from 'node:fs/promises';
+import { monthStart } from './astro/sankranti.js';
+import { SIDEREAL_YEAR } from './astro/surya-siddhanta.js';
 import {
-  dayNumberToGregorian,
-  gregorianToDayNumber,
-} from '../src/core/gregorian.js';
+  type Decision,
+  isoOf,
+  key,
+  loadVerifiedTable,
+  monthKey,
+  type MonthLengths,
+  read,
+  root,
+  sum,
+  validateYear,
+  type VerifiedTable,
+} from './lib/verified-table.js';
 
-const root = new URL('../', import.meta.url);
-const read = (path: string) => readFile(new URL(path, root), 'utf8');
-
-type MonthLengths = number[];
-type Table = Map<number, MonthLengths>;
-
-interface SourceEntry {
-  id: string;
-  name: string;
-  repository: string;
-  commit: string;
-  file: string;
-  format: string;
-  license: string;
+interface Projection {
+  /** Month lengths per projected year, in year order. */
+  years: Map<number, MonthLengths>;
+  /** First day number of each projected month, keyed `YYYY-MM`. */
+  starts: Map<string, number>;
+  /** Month starts (`YYYY-MM`) within the uncertainty margin of a boundary. */
+  uncertain: string[];
 }
 
-interface Config {
-  minYear: number;
-  maxYear: number;
-  anchor: { bs: string; ad: string; evidence: string };
-  resolutions: Record<string, { use: string; reason: string }>;
-}
+/** Projects every year after the published table. */
+function project(verified: VerifiedTable): Projection {
+  const { maxYear, projection } = verified.config;
+  const errors: string[] = [];
 
-interface ReferenceSnapshot {
-  source: string;
-  retrieved: string;
-  months: Record<string, { days: number; startAd: string }>;
-}
-
-// ---------------------------------------------------------------------------
-// Source parsers: each turns one upstream file into year → 12 month lengths.
-// ---------------------------------------------------------------------------
-
-const numbers = (list: string): number[] =>
-  list
-    .split(',')
-    .map((n) => n.trim())
-    .filter((n) => n !== '')
-    .map(Number);
-
-const parsers: Record<string, (text: string) => Table> = {
-  'nepali-datetime-csv': (text) =>
-    new Map(
-      text
-        .trim()
-        .split('\n')
-        .slice(1)
-        .map((line) => {
-          const [year, ...months] = numbers(line);
-          return [year!, months];
-        }),
-    ),
-
-  'medic-json': (text) =>
-    new Map(
-      Object.entries(JSON.parse(text) as Record<string, number[]>).map(
-        ([year, months]) => [Number(year), months],
-      ),
-    ),
-
-  'subeshb1-ts': (text) =>
-    new Map(
-      [...text.matchAll(/'(\d{4})':\s*\{([^}]*)\}/g)].map(([, year, body]) => [
-        Number(year),
-        [...body!.matchAll(/:\s*(\d+)/g)].map(([, n]) => Number(n)),
-      ]),
-    ),
-
-  // The file also holds cumulative tables; only the first one is month lengths.
-  'ashok095-py': (text) =>
-    new Map(
-      [
-        ...text
-          .split('CUMULATIVE_DAYS_BS')[0]!
-          .matchAll(/(\d{4}):\s*\[([^\]]*)\]/g),
-      ].map(([, year, list]) => [Number(year), numbers(list!)]),
-    ),
-
-  // Rows end with the year's total, and some years alias an earlier one.
-  'remotemerge-ts': (text) => {
-    const table: Table = new Map();
-    const rows = /years\[(\d{4})\]\s*=\s*(?:\[([^\]]*)\]|years\[(\d{4})\])/g;
-    for (const [, year, list, alias] of text.matchAll(rows)) {
-      const months = list
-        ? numbers(list).slice(0, 12)
-        : table.get(Number(alias));
-      if (months) table.set(Number(year), months);
+  // Month starts from the first projected Baisakh through the Baisakh after
+  // the last projected year, which closes the last year's Chaitra.
+  const starts: { key: string; day: number }[] = [];
+  const uncertain: string[] = [];
+  for (let year = maxYear + 1; year <= projection.maxYear + 1; year++) {
+    for (let month = 1; month <= 12; month++) {
+      if (year > projection.maxYear && month > 1) break;
+      const start = monthStart(year, month, projection);
+      starts.push({ key: monthKey(year, month), day: start.dayNumber });
+      if (start.marginMinutes < projection.uncertainMarginMinutes) {
+        uncertain.push(monthKey(year, month));
+      }
     }
-    return table;
-  },
-
-  'sandipghimire-ts': (text) =>
-    new Map(
-      [...text.matchAll(/year:\s*(\d{4}),\s*days:\s*\[([^\]]*)\]/g)].map(
-        ([, year, list]) => [Number(year), numbers(list!)],
-      ),
-    ),
-};
-
-// ---------------------------------------------------------------------------
-
-const sum = (months: MonthLengths) => months.reduce((a, b) => a + b, 0);
-const key = (months: MonthLengths) => months.join(',');
-const isoDayNumber = (iso: string) => {
-  const [y, m, d] = iso.split('-').map(Number);
-  return gregorianToDayNumber(y!, m!, d!);
-};
-const isoOf = (dayNumber: number) => {
-  const { year, month, day } = dayNumberToGregorian(dayNumber);
-  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-};
-
-function validateYear(year: number, months: MonthLengths): string[] {
-  const problems: string[] = [];
-  if (months.length !== 12) problems.push(`${year}: ${months.length} months`);
-  if (months.some((d) => !Number.isInteger(d) || d < 29 || d > 32)) {
-    problems.push(`${year}: a month outside 29–32 days (${key(months)})`);
   }
-  if (sum(months) !== 365 && sum(months) !== 366) {
-    problems.push(`${year}: ${sum(months)} days in the year`);
+
+  if (starts[0]!.day !== verified.lastDay + 1) {
+    errors.push(
+      `projected ${starts[0]!.key} starts on ${isoOf(starts[0]!.day)}, ` +
+        `but the published table ends on ${isoOf(verified.lastDay)}`,
+    );
   }
-  return problems;
+
+  const years = new Map<number, MonthLengths>();
+  for (let i = 0; i + 1 < starts.length; i++) {
+    const year = Number(starts[i]!.key.slice(0, 4));
+    const months = years.get(year) ?? [];
+    months.push(starts[i + 1]!.day - starts[i]!.day);
+    years.set(year, months);
+  }
+  // New Year's Day can only drift from the last published one at the rate of
+  // the mean sidereal year; allow a day either way for the true Sun.
+  const lastNewYear =
+    verified.lastDay + 1 - sum(verified.decisions.get(maxYear)!.months);
+  for (const [year, months] of years) {
+    errors.push(...validateYear(year, months));
+    const newYear = starts.find((s) => s.key === monthKey(year, 1))!.day;
+    const expected = lastNewYear + (year - maxYear) * SIDEREAL_YEAR;
+    if (Math.abs(newYear - expected) > 1) {
+      errors.push(
+        `${year}: New Year's Day on ${isoOf(newYear)}, expected about ${isoOf(Math.round(expected))}`,
+      );
+    }
+  }
+  if (errors.length > 0) {
+    throw new Error(`Projection is not consistent:\n  ${errors.join('\n  ')}`);
+  }
+  return {
+    years,
+    starts: new Map(starts.map((s) => [s.key, s.day])),
+    uncertain,
+  };
 }
-
-type Decision =
-  | { kind: 'reference'; months: MonthLengths; dissent: string[] }
-  | { kind: 'unanimous'; months: MonthLengths }
-  | { kind: 'resolved'; months: MonthLengths; use: string; reason: string };
 
 async function main(): Promise<void> {
   const check = process.argv.includes('--check');
-  const config = JSON.parse(await read('data/calendar.config.json')) as Config;
-  const { sources } = JSON.parse(await read('data/sources/manifest.json')) as {
-    sources: SourceEntry[];
-  };
-  const reference = JSON.parse(
-    await read('data/references/hamropatro.json'),
-  ) as ReferenceSnapshot;
-
-  const tables = new Map<string, Table>();
-  for (const source of sources) {
-    const parse = parsers[source.format];
-    if (!parse) throw new Error(`No parser for format ${source.format}`);
-    tables.set(source.id, parse(await read(`data/sources/${source.file}`)));
-  }
-
-  const referenceYear = (year: number): MonthLengths | undefined => {
-    const months = Array.from(
-      { length: 12 },
-      (_, m) =>
-        reference.months[`${year}-${String(m + 1).padStart(2, '0')}`]?.days,
-    );
-    return months.every((d) => d !== undefined) ? months : undefined;
-  };
-
-  const errors: string[] = [];
-  const decisions = new Map<number, Decision>();
-
-  for (let year = config.minYear; year <= config.maxYear; year++) {
-    const votes = new Map<string, string[]>();
-    for (const [id, table] of tables) {
-      const months = table.get(year);
-      if (months)
-        votes.set(key(months), [...(votes.get(key(months)) ?? []), id]);
-    }
-    const resolution = config.resolutions[String(year)];
-    const fromReference = referenceYear(year);
-
-    if (fromReference) {
-      const dissent = [...votes]
-        .filter(([k]) => k !== key(fromReference))
-        .flatMap(([, ids]) => ids);
-      decisions.set(year, {
-        kind: 'reference',
-        months: fromReference,
-        dissent,
-      });
-      if (resolution) {
-        errors.push(`${year}: has a resolution but the reference covers it`);
-      }
-    } else if (votes.size === 1 && [...votes.values()][0]!.length >= 2) {
-      decisions.set(year, {
-        kind: 'unanimous',
-        months: numbers([...votes.keys()][0]!),
-      });
-      if (resolution) errors.push(`${year}: has a resolution but no dispute`);
-    } else if (resolution) {
-      const months = tables.get(resolution.use)?.get(year);
-      if (!months) {
-        errors.push(`${year}: resolution source ${resolution.use} has no data`);
-        continue;
-      }
-      decisions.set(year, { kind: 'resolved', months, ...resolution });
-    } else {
-      const summary = [...votes]
-        .map(([k, ids]) => `[${ids.join(', ')}] ${k}`)
-        .join('; ');
-      errors.push(`${year}: sources disagree and no resolution: ${summary}`);
-    }
-  }
-
-  for (const [year, decision] of decisions) {
-    errors.push(...validateYear(year, decision.months));
-  }
-  if (errors.length > 0) {
-    throw new Error(
-      `Calendar data is not consistent:\n  ${errors.join('\n  ')}`,
-    );
-  }
-
-  // Place the table on the day-number line using the anchor date.
-  const [anchorYear, anchorMonth, anchorDay] = config.anchor.bs
-    .split('-')
-    .map(Number) as [number, number, number];
-  let offset = anchorDay - 1;
-  for (let y = config.minYear; y < anchorYear; y++)
-    offset += sum(decisions.get(y)!.months);
-  for (let m = 0; m < anchorMonth - 1; m++)
-    offset += decisions.get(anchorYear)!.months[m]!;
-  const epoch = isoDayNumber(config.anchor.ad) - offset;
-
-  // Every month start the reference records must agree with the table.
-  let checkedStarts = 0;
-  let start = epoch;
-  for (let year = config.minYear; year <= config.maxYear; year++) {
-    decisions.get(year)!.months.forEach((days, m) => {
-      const record =
-        reference.months[`${year}-${String(m + 1).padStart(2, '0')}`];
-      if (record) {
-        checkedStarts++;
-        if (record.startAd !== isoOf(start)) {
-          errors.push(
-            `${year}-${m + 1}: reference starts it on ${record.startAd}, table on ${isoOf(start)}`,
-          );
-        }
-      }
-      start += days;
-    });
-  }
-  if (errors.length > 0) {
-    throw new Error(
-      `Reference dates disagree with the table:\n  ${errors.join('\n  ')}`,
-    );
-  }
-
-  const generated = renderTable(config, epoch, decisions);
-  const report = renderReport({
-    config,
-    sources,
-    tables,
-    reference,
-    decisions,
-    epoch,
-    lastDay: start - 1,
-    checkedStarts,
-    referenceYear,
-  });
+  const verified = await loadVerifiedTable();
+  const projection = project(verified);
 
   const outputs: [string, string][] = [
-    ['src/data/calendar.generated.ts', generated],
-    ['data/REPORT.md', report],
+    ['src/data/calendar.generated.ts', renderTable(verified, projection)],
+    ['data/REPORT.md', renderReport(verified, projection)],
   ];
   if (check) {
     const stale: string[] = [];
@@ -297,9 +123,12 @@ async function main(): Promise<void> {
   for (const [path, content] of outputs) {
     await writeFile(new URL(path, root), content);
   }
+  const { config } = verified;
   console.log(
-    `Wrote BS ${config.minYear}–${config.maxYear} (${isoOf(epoch)} to ${isoOf(start - 1)}); ` +
-      `${checkedStarts} month starts match the reference.`,
+    `Wrote published BS ${config.minYear}–${config.maxYear} ` +
+      `(${verified.checkedStarts} month starts match the reference) and ` +
+      `projected BS ${config.maxYear + 1}–${config.projection.maxYear} ` +
+      `(${projection.uncertain.length} uncertain month starts).`,
   );
 }
 
@@ -307,45 +136,54 @@ async function main(): Promise<void> {
 // Output rendering
 // ---------------------------------------------------------------------------
 
-function renderTable(
-  config: Config,
-  epoch: number,
-  decisions: Map<number, Decision>,
-): string {
-  const rows = [...decisions].map(
-    ([year, d]) => `  [${d.months.join(', ')}], // ${year}`,
+function renderTable(verified: VerifiedTable, projection: Projection): string {
+  const { config, decisions, epoch } = verified;
+  const row = (year: number, months: MonthLengths) =>
+    `  [${months.join(', ')}], // ${year}`;
+  const published = [...decisions].map(([year, d]) => row(year, d.months));
+  const projected = [...projection.years].map(([year, months]) =>
+    row(year, months),
   );
+  const uncertain = projection.uncertain.map((k) => `  '${k}',`);
+
   return `// Generated by scripts/build-calendar.ts from data/. Do not edit by hand:
 // change the inputs and run \`npm run data:build\`.
 
 /** The first BS year the table covers. */
 export const BS_MIN_YEAR = ${config.minYear};
 
-/** The last BS year the table covers. */
-export const BS_MAX_YEAR = ${config.maxYear};
+/**
+ * The last BS year with a published calendar. Later years are projected by
+ * the Sūrya Siddhānta; see docs/projection.md.
+ */
+export const BS_LAST_PUBLISHED_YEAR = ${config.maxYear};
+
+/** The last BS year the table covers, including projected years. */
+export const BS_MAX_YEAR = ${config.projection.maxYear};
 
 /** The RD day number of 1 Baisakh ${config.minYear} (${isoOf(epoch)} AD). */
 export const BS_EPOCH_DAY_NUMBER = ${epoch};
 
 /** Days in each month (Baisakh first) of each year from BS_MIN_YEAR. */
 export const MONTH_LENGTHS: readonly (readonly number[])[] = [
-${rows.join('\n')}
+${published.join('\n')}
+  // Projected from here on (BS ${config.maxYear + 1}–${config.projection.maxYear}).
+${projected.join('\n')}
+];
+
+/**
+ * Projected month starts (\`YYYY-MM\`) whose saṅkrānti falls within
+ * ${config.projection.uncertainMarginMinutes} minutes of a boundary of the month rule, so the month may
+ * start a day earlier or later than projected.
+ */
+export const UNCERTAIN_MONTH_STARTS: readonly string[] = [
+${uncertain.join('\n')}
 ];
 `;
 }
 
-function renderReport(input: {
-  config: Config;
-  sources: SourceEntry[];
-  tables: Map<string, Table>;
-  reference: ReferenceSnapshot;
-  decisions: Map<number, Decision>;
-  epoch: number;
-  lastDay: number;
-  checkedStarts: number;
-  referenceYear: (year: number) => MonthLengths | undefined;
-}): string {
-  const { config, sources, tables, reference, decisions } = input;
+function renderReport(verified: VerifiedTable, projection: Projection): string {
+  const { config, sources, tables, reference, decisions } = verified;
   const count = (kind: Decision['kind']) =>
     [...decisions.values()].filter((d) => d.kind === kind).length;
 
@@ -372,32 +210,43 @@ function renderReport(input: {
     return [`| ${year} | ${d.months.join(' ')} | ${how} |`];
   });
 
+  // Compare the reference's own projections with ours.
   const beyond: string[] = [];
   for (let year = config.maxYear + 1; ; year++) {
-    const months = input.referenceYear(year);
+    const months = verified.referenceYear(year);
     if (!months) break;
-    const start = reference.months[`${year}-01`]!.startAd;
+    const start = reference.months[monthKey(year, 1)]!.startAd;
     const notes = [
       ...(validateYear(year, months).length ? ['impossible year length'] : []),
       ...(/-04-1[34]$/.test(start) ? [] : ['implausible New Year']),
     ];
+    let matching = 0;
+    for (let m = 1; m <= 12; m++) {
+      const theirs = reference.months[monthKey(year, m)]!.startAd;
+      const ours = projection.starts.get(monthKey(year, m));
+      if (ours !== undefined && isoOf(ours) === theirs) matching++;
+    }
     beyond.push(
-      `| ${year} | ${start} | ${sum(months)} | ${notes.join(', ')} |`,
+      `| ${year} | ${start} | ${sum(months)} | ${matching}/12 | ${notes.join(', ')} |`,
     );
   }
+
+  const { projection: p } = config;
+  const uncertainList = projection.uncertain.join(', ');
 
   return `# Calendar data report
 
 Generated by \`npm run data:build\`. Do not edit by hand.
 
-- **Range:** BS ${config.minYear}–${config.maxYear} (${isoOf(input.epoch)} to ${isoOf(input.lastDay)} AD)
+- **Published range:** BS ${config.minYear}–${config.maxYear} (${isoOf(verified.epoch)} to ${isoOf(verified.lastDay)} AD)
+- **Projected range:** BS ${config.maxYear + 1}–${p.maxYear}
 - **Anchor:** ${config.anchor.bs} BS = ${config.anchor.ad} AD (${config.anchor.evidence})
-- **Years:** ${count('unanimous')} unanimous, ${count('reference')} from the reference, ${count('resolved')} resolved by hand
-- **Reference:** ${input.checkedStarts} month starts from ${reference.source} (retrieved ${reference.retrieved}) match the table
+- **Published years:** ${count('unanimous')} unanimous, ${count('reference')} from the reference, ${count('resolved')} resolved by hand
+- **Reference:** ${verified.checkedStarts} month starts from ${reference.source} (retrieved ${reference.retrieved}) match the table
 
 ## Sources
 
-Agreement counts years in the range where the source matches the final table.
+Agreement counts published years where the source matches the final table.
 
 | Source | License | Years | Agreement |
 | --- | --- | --- | --- |
@@ -409,14 +258,25 @@ ${sourceRows.join('\n')}
 | --- | --- | --- |
 ${disputedRows.join('\n')}
 
-## Reference years beyond the table
+## Projection
 
-${reference.source} also lists these years. They are projections, not
-published calendars, so the table stops at ${config.maxYear}. A valid year
-has 365 or 366 days and starts on 13 or 14 April.
+Years after ${config.maxYear} come from the Sūrya Siddhānta engine
+(model \`${p.model}\`, offset ${p.offsetMinutes} minutes); see
+[docs/projection.md](../docs/projection.md) and the accuracy report
+[ACCURACY.md](ACCURACY.md).
 
-| Year | 1 Baisakh | Days | Problems |
-| --- | --- | --- | --- |
+${projection.uncertain.length} projected month starts fall within ${p.uncertainMarginMinutes} minutes of a
+boundary of the month rule and are flagged uncertain: ${uncertainList}.
+
+## Reference projections
+
+${reference.source} also lists years after ${config.maxYear}. These are its own
+projections, not published calendars. A valid year has 365 or 366 days and
+starts on 13 or 14 April in this century. "Agree" counts the month starts
+that are the same as this library's projection.
+
+| Year | 1 Baisakh | Days | Agree | Problems |
+| --- | --- | --- | --- | --- |
 ${beyond.join('\n')}
 `;
 }

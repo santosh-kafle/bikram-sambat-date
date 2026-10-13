@@ -5,11 +5,26 @@ import {
   isValidGregorianDate,
   weekdayOf,
 } from './core/gregorian.js';
-import { bsToDayNumber, dayNumberToBs } from './core/table.js';
-import { InvalidDateError } from './errors.js';
+import {
+  BS_LAST_PUBLISHED_YEAR,
+  bsToDayNumber,
+  type DateConfidence,
+  dayNumberToBs,
+  monthConfidence,
+} from './core/table.js';
+import { InvalidDateError, ProjectedDateError } from './errors.js';
 
 const pad = (n: number, width: number): string =>
   String(n).padStart(width, '0');
+
+/** Options for creating or converting dates. */
+export interface ConversionOptions {
+  /**
+   * Accept only dates from published calendars. A date in a projected year
+   * throws `ProjectedDateError` instead. Defaults to `false`.
+   */
+  readonly strict?: boolean;
+}
 
 /**
  * An immutable Bikram Sambat calendar date: a day, with no time or time zone.
@@ -31,8 +46,13 @@ export class BsDate {
   readonly day: number;
   readonly #dayNumber: number;
 
-  private constructor(dayNumber: number) {
+  private constructor(dayNumber: number, options: ConversionOptions) {
     const { year, month, day } = dayNumberToBs(dayNumber);
+    if (options.strict && year > BS_LAST_PUBLISHED_YEAR) {
+      throw new ProjectedDateError(
+        `${year} BS is projected; published calendars end with ${BS_LAST_PUBLISHED_YEAR}`,
+      );
+    }
     this.year = year;
     this.month = month;
     this.day = day;
@@ -45,26 +65,35 @@ export class BsDate {
    *
    * @throws {InvalidDateError} if the date does not exist, such as day 32 of
    *   a 31-day month.
-   * @throws {DateOutOfRangeError} if the year is outside the table.
+   * @throws {DateOutOfRangeError} if the year is outside the supported range.
+   * @throws {ProjectedDateError} with `{ strict: true }`, if the year is
+   *   projected.
    */
-  static of(year: number, month: number, day: number): BsDate {
-    return new BsDate(bsToDayNumber(year, month, day));
+  static of(
+    year: number,
+    month: number,
+    day: number,
+    options: ConversionOptions = {},
+  ): BsDate {
+    return new BsDate(bsToDayNumber(year, month, day), options);
   }
 
   /**
    * The BS date on the same day as a Gregorian date.
    *
    * @throws {InvalidDateError} if the Gregorian date does not exist.
-   * @throws {DateOutOfRangeError} if the date is outside the table.
+   * @throws {DateOutOfRangeError} if the date is outside the supported range.
+   * @throws {ProjectedDateError} with `{ strict: true }`, if the date falls
+   *   in a projected year.
    */
-  static fromAd(ad: AdDate): BsDate {
+  static fromAd(ad: AdDate, options: ConversionOptions = {}): BsDate {
     const { year, month, day } = ad;
     if (!isValidGregorianDate(year, month, day)) {
       throw new InvalidDateError(
         `${year}-${month}-${day} is not a Gregorian date`,
       );
     }
-    return new BsDate(gregorianToDayNumber(year, month, day));
+    return new BsDate(gregorianToDayNumber(year, month, day), options);
   }
 
   /** Orders two dates: negative if `a` is earlier, 0 if equal, positive if later. */
@@ -75,6 +104,19 @@ export class BsDate {
   /** The day of the week: 0 is Sunday (Aaitabar), 6 is Saturday (Shanibar). */
   get weekday(): number {
     return weekdayOf(this.#dayNumber);
+  }
+
+  /**
+   * How far this date can be trusted: `published`, `projected` or
+   * `uncertain`. See `DateConfidence` and docs/projection.md.
+   */
+  get confidence(): DateConfidence {
+    return monthConfidence(this.year, this.month);
+  }
+
+  /** Whether this date falls in a projected year rather than a published one. */
+  get isProjected(): boolean {
+    return this.year > BS_LAST_PUBLISHED_YEAR;
   }
 
   /** The Gregorian date of the same day. */

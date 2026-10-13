@@ -36,9 +36,15 @@ src/
   data/
     calendar.generated.ts   the table, written by scripts/build-calendar.ts
 scripts/
-  build-calendar.ts         cross-checks data/ and writes the table
+  build-calendar.ts         writes the table: published years, then projected
+  calibrate.ts              scores the projection, writes data/ACCURACY.md
   fetch-hamropatro.ts       refreshes the Hamro Patro reference
-data/                       inputs and report; see data-sources.md
+  lib/verified-table.ts     decides and checks the published years
+  astro/                    Sūrya Siddhānta engine (build time only)
+    surya-siddhanta.ts      the Sun's true sidereal longitude
+    sankranti.ts            saṅkrāntis and the month rule
+    sun-times.ts            Kathmandu sunrise and sunset
+data/                       inputs and reports; see data-sources.md
 test/                       Vitest suites
 ```
 
@@ -46,16 +52,23 @@ test/                       Vitest suites
 
 `calendar.generated.ts` exports:
 
-- `BS_MIN_YEAR` and `BS_MAX_YEAR`;
+- `BS_MIN_YEAR`, `BS_LAST_PUBLISHED_YEAR` and `BS_MAX_YEAR`;
 - `BS_EPOCH_DAY_NUMBER`, the day number of 1 Baisakh of `BS_MIN_YEAR`;
-- `MONTH_LENGTHS`, one row of twelve numbers per year.
+- `MONTH_LENGTHS`, one row of twelve numbers per year, published years first,
+  then projected ones;
+- `UNCERTAIN_MONTH_STARTS`, the projected month starts that could be a day
+  off (see [projection.md](projection.md)).
 
-The rows stay plain arrays rather than being bit-packed. At about 7 KB of source the
-size is negligible, and plain arrays keep every change to the data readable
-in a diff.
+The rows stay plain arrays rather than being bit-packed. At about 15 KB of
+source the size is small, and plain arrays keep every change to the data
+readable in a diff.
+
+The projection is computed when the table is built, not when the library
+runs. The package contains no astronomy code. Results are the same on every
+JavaScript engine, and every projected month can be reviewed in git.
 
 `table.ts` builds a cumulative index of year start day numbers the first
-time it is needed. A conversion then costs a binary search over about 110
+time it is needed. A conversion then costs a binary search over about 225
 years plus a walk of at most twelve months.
 
 ## Design rules
@@ -66,8 +79,10 @@ years plus a walk of at most twelve months.
 - **`BsDate` is immutable.** Its fields are `readonly` and the object is
   frozen. It serializes to `"YYYY-MM-DD"`, so it can go straight into JSON
   responses.
-- **Never guess.** Dates outside the table throw `DateOutOfRangeError`.
-  Impossible dates, such as day 32 of a 31-day month or 30 February, throw
-  `InvalidDateError`. Both extend `BikramSambatError`.
+- **Never guess silently.** Projected dates say so in `confidence`, and
+  `{ strict: true }` rejects them with `ProjectedDateError`. Dates outside
+  the table throw `DateOutOfRangeError`. Impossible dates, such as day 32 of
+  a 31-day month or 30 February, throw `InvalidDateError`. All extend
+  `BikramSambatError`.
 - **Zero runtime dependencies.** The package ships ESM and CommonJS builds
   with type definitions, and is marked side-effect free for tree shaking.

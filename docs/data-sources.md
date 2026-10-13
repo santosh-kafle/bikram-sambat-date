@@ -59,7 +59,10 @@ It then places the table on the calendar using the anchor
 `npm run data:build -- --check` verifies both outputs are up to date
 without writing them.
 
-## Range: BS 1975–2083
+## Range: published BS 1975–2083
+
+This range covers the **published** years. Later years are projected; see
+[projection.md](projection.md).
 
 - **Start, 1975.** This is where most sources begin. Hamro Patro has no
   pages before 2000. Seven years before 2000 (1975, 1977, 1981, 1989, 1991,
@@ -76,11 +79,10 @@ without writing them.
   appeared. Tables published in 2019–2020 had 10 of the 84 month starts in
   2077–2083 wrong.
 
-Rather than ship such guesses as fact, the library throws
-`DateOutOfRangeError` past 2083. A Sūrya Siddhānta projection for later
-years, clearly marked as projected, is planned for the next release. In a
-backtest on 2077–2083 it got 81 of 84 month starts right, as good as the
-best table updated a year before.
+So the library does not take later years from these sources. It computes
+them with the Sūrya Siddhānta, calibrated to 99.2% of published month
+starts, and marks every such date as projected. `data/REPORT.md` compares
+that projection with Hamro Patro's own for the years Hamro Patro lists.
 
 ## Adding a year when a new calendar is published
 
@@ -90,9 +92,14 @@ it is out:
 1. Run `npm run data:fetch-hamropatro -- <year>` to refresh the reference.
 2. Raise `maxYear` in `data/calendar.config.json`.
 3. Run `npm run data:build`. If the sources disagree with the reference, the
-   reference wins, and the report lists which sources differ.
-4. Check a few dates against the printed patro or another trusted calendar.
-5. Run `npm test`, then release.
+   reference wins, and the report lists which sources differ. The year leaves
+   the projected range.
+4. Run `npm run data:calibrate`. The new year is now evidence for the
+   projection. If the projection got one of its months wrong by more than
+   the uncertainty margin, this fails; see
+   [projection.md](projection.md#calibration).
+5. Check a few dates against the printed patro or another trusted calendar.
+6. Run `npm test`, then release.
 
 To refresh a source table, update its file and its `commit` and `retrieved`
 fields in the manifest, then rebuild.

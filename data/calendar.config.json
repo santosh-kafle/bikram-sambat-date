@@ -37,5 +37,12 @@
       "use": "nepali-datetime",
       "reason": "Low confidence. Four sources agree; only remotemerge differs (Bhadra/Asoj). The Surya Siddhanta model sides with remotemerge here."
     }
+  },
+  "projection": {
+    "$comment": "Sūrya Siddhānta projection for years after maxYear; see docs/projection.md. Choose values from the sweep in data/ACCURACY.md (npm run data:calibrate).",
+    "maxYear": 2200,
+    "model": "fixed-apogee",
+    "offsetMinutes": -10,
+    "uncertainMarginMinutes": 30
   }
 }
