@@ -1,0 +1,23 @@
+bikram-sambat-date
+Copyright (c) 2026 Santosh Kafle. Licensed under the MIT License.
+
+The calendar table in src/data/calendar.generated.ts was built by
+cross-checking month-length data published by the following projects. Their
+original files and licenses are kept in data/sources/ in the source
+repository.
+
+- nepali-datetime, https://github.com/amitgaru2/nepali-datetime
+  Apache License 2.0
+- bikram-sambat by Medic, https://github.com/medic/bikram-sambat
+  Apache License 2.0
+- nepali-date-converter by subeshb1, https://github.com/subeshb1/Nepali-Date
+  MIT License
+- bikram-sambat by ashok095, https://github.com/ashok095/bikram-sambat
+  MIT License
+- @remotemerge/nepali-date-converter, https://github.com/remotemerge/nepali-date-converter
+  MIT License
+- nepali-date-library by SandipGhimire, https://github.com/SandipGhimire/Nepali-Date-Library-NodeJS
+  MIT License
+
+Month start dates were also checked against Hamro Patro
+(https://www.hamropatro.com).
