@@ -79,6 +79,22 @@ ad.isBefore(date); // true
 
 `BsDate` is immutable.
 
+### Arithmetic
+
+```ts
+import { BsDate, monthGrid } from 'bikram-sambat-date';
+
+const date = BsDate.of(2083, 3, 32); // 32 Asar 2083
+date.addDays(1); // 2083-04-01
+date.addMonths(1); // 2083-04-31, clamped to the end of Shrawan
+date.endOfMonth(); // 2083-03-32
+BsDate.today().diffInYears(BsDate.of(2050, 6, 28)); // age in BS years
+monthGrid(2083, 4); // Shrawan 2083 as weeks, Sunday first
+```
+
+Every method returns a new date. See [docs/arithmetic.md](docs/arithmetic.md)
+for how months are clamped and differences counted.
+
 ### Formatting and parsing
 
 ```ts
@@ -218,8 +234,8 @@ Keep the package up to date so that dates in the coming year are
    `toInstant`, and `FiscalYear`.
 4. **Formatting and parsing (done):** `format` and `BsDate.parse` with
    English and Nepali names and Devanagari digits.
-5. **Arithmetic:** add days, months and years; differences; month
-   boundaries; month grids.
+5. **Arithmetic (done):** add and diff days, months and years; month and
+   year boundaries; `monthGrid`.
 6. **NestJS helpers:** `@IsBsDate()` validator, transformer and pipe, in a
    separate entry point.
 7. **Release:** CI, package checks, publish.
@@ -245,6 +261,8 @@ npm run data:calibrate # score the projection against published years
   instants, Kathmandu time and the fiscal year.
 - [docs/formatting.md](docs/formatting.md) lists the format tokens and how
   parsing reads strings.
+- [docs/arithmetic.md](docs/arithmetic.md) explains adding and comparing
+  dates, and month grids.
 
 ## License
 

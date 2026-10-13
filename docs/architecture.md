@@ -33,6 +33,7 @@ src/
   fiscal-year.ts            FiscalYear, fiscalYearOf
   format.ts                 format and parse patterns
   locale.ts                 month and weekday names, digits
+  month-grid.ts             monthGrid
   errors.ts                 BikramSambatError and subclasses
   core/
     gregorian.ts            Gregorian ↔ day number, weekday

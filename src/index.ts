@@ -31,4 +31,9 @@ export {
 } from './errors.js';
 export { FiscalYear, fiscalYearOf } from './fiscal-year.js';
 export type { FormatOptions } from './format.js';
+export {
+  monthGrid,
+  type GridDay,
+  type MonthGridOptions,
+} from './month-grid.js';
 export { type Locale, toAsciiDigits, toDevanagariDigits } from './locale.js';

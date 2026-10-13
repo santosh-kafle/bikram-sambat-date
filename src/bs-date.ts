@@ -11,6 +11,8 @@ import {
   bsToDayNumber,
   type DateConfidence,
   dayNumberToBs,
+  daysInBsMonth,
+  daysInBsYear,
   monthConfidence,
 } from './core/table.js';
 import {
@@ -27,6 +29,12 @@ import {
 
 const pad = (n: number, width: number): string =>
   String(n).padStart(width, '0');
+
+function assertInteger(value: number, name: string): void {
+  if (!Number.isInteger(value)) {
+    throw new RangeError(`${name} must be an integer, got ${value}`);
+  }
+}
 
 /** Options for creating or converting dates. */
 export interface ConversionOptions {
@@ -221,6 +229,112 @@ export class BsDate {
   /** Whether this date is later than `other`. */
   isAfter(other: BsDate): boolean {
     return this.#dayNumber > other.#dayNumber;
+  }
+
+  // --- Arithmetic -----------------------------------------------------------
+  // Results that leave the supported range throw DateOutOfRangeError. A
+  // result can fall in a projected year; check its `confidence` if that
+  // matters.
+
+  /** The number of days (29–32) in this date's month. */
+  get daysInMonth(): number {
+    return daysInBsMonth(this.year, this.month);
+  }
+
+  /** The number of days (365 or 366) in this date's year. */
+  get daysInYear(): number {
+    return daysInBsYear(this.year);
+  }
+
+  /** The day of the year: 1 for 1 Baisakh. */
+  get dayOfYear(): number {
+    return this.#dayNumber - this.startOfYear().#dayNumber + 1;
+  }
+
+  /**
+   * The date `days` days later (or earlier, if negative).
+   *
+   * @throws {RangeError} if `days` is not an integer.
+   */
+  addDays(days: number): BsDate {
+    assertInteger(days, 'days');
+    return new BsDate(this.#dayNumber + days, {});
+  }
+
+  /**
+   * The same day `months` months later (or earlier, if negative). If that
+   * month is shorter, the result is its last day: 32 Asar plus one month is
+   * the last day of Shrawan.
+   *
+   * @throws {RangeError} if `months` is not an integer.
+   */
+  addMonths(months: number): BsDate {
+    assertInteger(months, 'months');
+    const index = this.year * 12 + this.month - 1 + months;
+    const year = Math.floor(index / 12);
+    const month = index - year * 12 + 1;
+    return BsDate.of(
+      year,
+      month,
+      Math.min(this.day, daysInBsMonth(year, month)),
+    );
+  }
+
+  /**
+   * The same day `years` years later (or earlier), clamped to the end of the
+   * month like `addMonths`.
+   *
+   * @throws {RangeError} if `years` is not an integer.
+   */
+  addYears(years: number): BsDate {
+    assertInteger(years, 'years');
+    return this.addMonths(years * 12);
+  }
+
+  /** Days from `other` to this date: positive if this date is later. */
+  diffInDays(other: BsDate): number {
+    return this.#dayNumber - other.#dayNumber;
+  }
+
+  /**
+   * Whole months from `other` to this date: positive if this date is later.
+   * It is the largest `n` with `other.addMonths(n)` not past this date, so
+   * `x.addMonths(n).diffInMonths(x) === n` for every `n`.
+   */
+  diffInMonths(other: BsDate): number {
+    let months = (this.year - other.year) * 12 + (this.month - other.month);
+    const shifted = other.addMonths(months);
+    if (months > 0 && shifted.isAfter(this)) months--;
+    else if (months < 0 && shifted.isBefore(this)) months++;
+    return months;
+  }
+
+  /**
+   * Whole years from `other` to this date: positive if this date is later.
+   * Useful for ages in BS: `today.diffInYears(birthDate)`.
+   */
+  diffInYears(other: BsDate): number {
+    return Math.trunc(this.diffInMonths(other) / 12);
+  }
+
+  /** The first day of this date's month. */
+  startOfMonth(): BsDate {
+    return BsDate.of(this.year, this.month, 1);
+  }
+
+  /** The last day of this date's month. */
+  endOfMonth(): BsDate {
+    return BsDate.of(this.year, this.month, this.daysInMonth);
+  }
+
+  /** 1 Baisakh of this date's year. */
+  startOfYear(): BsDate {
+    return BsDate.of(this.year, 1, 1);
+  }
+
+  /** The last day of Chaitra of this date's year. */
+  endOfYear(): BsDate {
+    return BsDate.of(this.year, 12, daysInBsMonth(this.year, 12));
   }
 
   /**

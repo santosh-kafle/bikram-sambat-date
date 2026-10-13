@@ -8,6 +8,15 @@ All notable changes to this project are recorded here. The format follows
 
 ### Added
 
+- **Arithmetic on `BsDate`:**
+  - `addDays`, `addMonths`, `addYears`; month and year additions clamp to
+    the end of a shorter month;
+  - `diffInDays`, `diffInMonths`, `diffInYears`;
+  - `startOfMonth`, `endOfMonth`, `startOfYear`, `endOfYear`;
+  - `daysInMonth`, `daysInYear` and `dayOfYear`.
+- **`monthGrid(year, month, { weekStartsOn })`:** a month laid out in
+  weeks for calendars and reports.
+- **Docs:** `docs/arithmetic.md`.
 - **Formatting:** `BsDate#format(pattern?, { locale })`.
   - Tokens: `YYYY YY MMMM MMM MM M DD D dddd ddd d` and `[literal]`.
   - Locales `en` and `ne`; `ne` writes digits in Devanagari. Nepali names
