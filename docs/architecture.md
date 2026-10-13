@@ -18,9 +18,10 @@ that convert via `Date` give different answers on a server in UTC and one in
 Kathmandu. Here the problem cannot arise. The test suite runs under several
 time zones to prove it (`npm run test:tz`).
 
-Turning an instant (a `Date`, or "now") into a calendar date needs a time
-zone, Asia/Kathmandu. That is a separate concern, planned for a later
-release.
+Instants (a `Date`, a timestamp, or "now") are the one place a time zone
+enters. `src/core/kathmandu.ts` turns an instant into a day number in
+Kathmandu time, using Kathmandu's fixed UTC offsets. It never uses the
+server's zone. See [time-and-fiscal-year.md](time-and-fiscal-year.md).
 
 ## Layout
 
@@ -29,9 +30,11 @@ src/
   index.ts                  public exports
   bs-date.ts                BsDate, the immutable date value
   convert.ts                adToBs, bsToAd, supportedRange
+  fiscal-year.ts            FiscalYear, fiscalYearOf
   errors.ts                 BikramSambatError and subclasses
   core/
     gregorian.ts            Gregorian ↔ day number, weekday
+    kathmandu.ts            instant ↔ Kathmandu day number
     table.ts                BS ↔ day number, month and year lengths
   data/
     calendar.generated.ts   the table, written by scripts/build-calendar.ts

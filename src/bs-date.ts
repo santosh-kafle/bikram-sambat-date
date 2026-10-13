@@ -5,6 +5,7 @@ import {
   isValidGregorianDate,
   weekdayOf,
 } from './core/gregorian.js';
+import { dayNumberAtInstant, startOfDayInstant } from './core/kathmandu.js';
 import {
   BS_LAST_PUBLISHED_YEAR,
   bsToDayNumber,
@@ -96,6 +97,34 @@ export class BsDate {
     return new BsDate(gregorianToDayNumber(year, month, day), options);
   }
 
+  /**
+   * The Kathmandu calendar date at an instant, whatever the server's time
+   * zone. 2026-07-16T18:15:00Z is already 17 July in Kathmandu, so it gives
+   * 1 Shrawan 2083.
+   *
+   * @param instant a `Date`, or milliseconds since the Unix epoch.
+   * @throws {InvalidDateError} if `instant` is an invalid `Date` or not a
+   *   finite number.
+   * @throws {DateOutOfRangeError} if the date is outside the supported range.
+   * @throws {ProjectedDateError} with `{ strict: true }`, if the date falls
+   *   in a projected year.
+   */
+  static fromInstant(
+    instant: Date | number,
+    options: ConversionOptions = {},
+  ): BsDate {
+    const epochMs = typeof instant === 'number' ? instant : instant.getTime();
+    if (!Number.isFinite(epochMs)) {
+      throw new InvalidDateError(`Not a valid instant: ${String(instant)}`);
+    }
+    return new BsDate(dayNumberAtInstant(epochMs), options);
+  }
+
+  /** Today's date in Kathmandu. See `fromInstant`. */
+  static today(options: ConversionOptions = {}): BsDate {
+    return BsDate.fromInstant(Date.now(), options);
+  }
+
   /** Orders two dates: negative if `a` is earlier, 0 if equal, positive if later. */
   static compare(a: BsDate, b: BsDate): number {
     return a.#dayNumber - b.#dayNumber;
@@ -117,6 +146,16 @@ export class BsDate {
   /** Whether this date falls in a projected year rather than a published one. */
   get isProjected(): boolean {
     return this.year > BS_LAST_PUBLISHED_YEAR;
+  }
+
+  /**
+   * The instant this day begins in Kathmandu: local midnight, such as
+   * 2026-07-16T18:15:00Z for 1 Shrawan 2083. Use it to query timestamps
+   * that fall on this day (`>= date.toInstant()` and
+   * `< nextDay.toInstant()`).
+   */
+  toInstant(): Date {
+    return new Date(startOfDayInstant(this.#dayNumber));
   }
 
   /** The Gregorian date of the same day. */

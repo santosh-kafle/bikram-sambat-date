@@ -25,6 +25,8 @@ export {
 export {
   BikramSambatError,
   DateOutOfRangeError,
+  DateParseError,
   InvalidDateError,
   ProjectedDateError,
 } from './errors.js';
+export { FiscalYear, fiscalYearOf } from './fiscal-year.js';

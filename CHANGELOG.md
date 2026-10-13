@@ -8,6 +8,16 @@ All notable changes to this project are recorded here. The format follows
 
 ### Added
 
+- **Kathmandu time:** `BsDate.fromInstant(date | epochMs)`, `BsDate.today()`
+  and `BsDate#toInstant()`.
+  - Instants are read in Asia/Kathmandu whatever the server's time zone.
+  - They follow Kathmandu's historical UTC offsets: +5:41:16, then +5:30
+    from 1920, then +5:45 from 1986.
+- **Fiscal year:** `FiscalYear` (`of`, `parse`, `containing`, `contains`,
+  `next`, `previous`, `label`, `firstDay`, `lastDay`) and `fiscalYearOf`.
+  It covers fiscal years 1975/76–2199/00.
+- **`DateParseError`**, for strings in the wrong format.
+- **Docs:** `docs/time-and-fiscal-year.md`.
 - **Projected years** BS 2084–2200 (AD 2027-04-14 to 2144-04-15).
   - They are computed at build time with the Sūrya Siddhānta and Nepal's month
     rule: the civil day of the saṅkrānti, with the puṇya-kāla exceptions for

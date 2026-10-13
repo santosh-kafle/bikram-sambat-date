@@ -24,3 +24,8 @@ export class InvalidDateError extends BikramSambatError {
 export class ProjectedDateError extends DateOutOfRangeError {
   override name = 'ProjectedDateError';
 }
+
+/** A string is not in the expected format, such as a fiscal year label. */
+export class DateParseError extends BikramSambatError {
+  override name = 'DateParseError';
+}

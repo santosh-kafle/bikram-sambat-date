@@ -79,6 +79,37 @@ ad.isBefore(date); // true
 
 `BsDate` is immutable.
 
+### Instants and Kathmandu time
+
+A `Date` (or a database timestamp) is an instant, which falls on different
+dates in different time zones. BS dates are read in **Kathmandu time**,
+whatever the server's time zone:
+
+```ts
+import { BsDate } from 'bikram-sambat-date';
+
+BsDate.fromInstant(new Date('2026-07-16T18:15:00Z')).toString(); // '2083-04-01'
+BsDate.today(); // today in Kathmandu
+BsDate.of(2083, 4, 1).toInstant(); // 2026-07-16T18:15:00.000Z, midnight in Kathmandu
+```
+
+### Fiscal year
+
+Nepal's fiscal year runs from 1 Shrawan to the last day of Asar:
+
+```ts
+import { FiscalYear, fiscalYearOf } from 'bikram-sambat-date';
+
+fiscalYearOf(new Date()).label; // '2083/84'
+const fy = FiscalYear.parse('2083/84');
+fy.firstDay.toString(); // '2083-04-01'
+fy.contains(BsDate.of(2084, 3, 1)); // true
+fy.next().label; // '2084/85'
+```
+
+See [docs/time-and-fiscal-year.md](docs/time-and-fiscal-year.md) for
+Kathmandu's clock history and querying records by BS day.
+
 ### Calendar facts
 
 ```ts
@@ -126,11 +157,12 @@ BsDate.of(2090, 1, 1, { strict: true }); // throws ProjectedDateError
 
 ### Errors
 
-| Error                 | When                                                             |
-| --------------------- | ---------------------------------------------------------------- |
-| `DateOutOfRangeError` | The date is outside the supported range.                         |
-| `ProjectedDateError`  | With `{ strict: true }`: the date is projected, not published.   |
-| `InvalidDateError`    | The date does not exist, such as 32 Baisakh 2083 or 30 February. |
+| Error                 | When                                                                           |
+| --------------------- | ------------------------------------------------------------------------------ |
+| `DateOutOfRangeError` | The date is outside the supported range.                                       |
+| `ProjectedDateError`  | With `{ strict: true }`: the date is projected, not published.                 |
+| `InvalidDateError`    | The date does not exist, such as 32 Baisakh 2083 or 30 February.               |
+| `DateParseError`      | A string is not in the expected format, such as `FiscalYear.parse('2083-84')`. |
 
 All extend `BikramSambatError`. `ProjectedDateError` also extends
 `DateOutOfRangeError`, so code that handles out-of-range dates handles it
@@ -142,10 +174,8 @@ import { BikramSambatError, BsDate } from 'bikram-sambat-date';
 try {
   BsDate.of(year, month, day);
 } catch (error) {
-  if (error instanceof BikramSambatError) {
-    // reject the request with a 400
-  }
-  throw error;
+  if (!(error instanceof BikramSambatError)) throw error;
+  // a bad or unsupported date: reject the request with a 400
 }
 ```
 
@@ -167,8 +197,8 @@ Keep the package up to date so that dates in the coming year are
 1. **Foundation (done):** cross-checked table, conversion and `BsDate`.
 2. **Projected range (done):** Sūrya Siddhānta month starts through BS
    2200, with `confidence` and `{ strict: true }`.
-3. **Kathmandu time and fiscal year:** convert instants in Asia/Kathmandu;
-   Nepal fiscal year helpers (Shrawan 1 start).
+3. **Kathmandu time and fiscal year (done):** `fromInstant`, `today`,
+   `toInstant`, and `FiscalYear`.
 4. **Formatting and parsing:** format tokens, Nepali month and weekday
    names, Devanagari digits, strict parsing.
 5. **Arithmetic:** add days, months and years; differences; month
@@ -194,6 +224,8 @@ npm run data:calibrate # score the projection against published years
   data comes from and how to update it.
 - [docs/projection.md](docs/projection.md) explains how years after the
   published calendars are computed, and how accurate that is.
+- [docs/time-and-fiscal-year.md](docs/time-and-fiscal-year.md) explains
+  instants, Kathmandu time and the fiscal year.
 
 ## License
 
