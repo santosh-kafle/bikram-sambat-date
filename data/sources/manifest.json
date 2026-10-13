@@ -1,0 +1,72 @@
+{
+  "$comment": "Provenance of every month-length table in data/sources. Files are kept byte-for-byte as published upstream, next to the upstream LICENSE. scripts/build-calendar.ts reads this manifest.",
+  "sources": [
+    {
+      "id": "nepali-datetime",
+      "name": "nepali-datetime (Python)",
+      "repository": "https://github.com/amitgaru2/nepali-datetime",
+      "commit": "83bb3b2ea62359dd0a63cce68553bcebf94e1ebc",
+      "upstreamPath": "nepali_datetime/data/calendar_bs.csv",
+      "file": "nepali-datetime/calendar_bs.csv",
+      "format": "nepali-datetime-csv",
+      "license": "Apache-2.0",
+      "retrieved": "2026-10-13"
+    },
+    {
+      "id": "medic-bikram-sambat",
+      "name": "bikram-sambat by Medic (JavaScript/Java)",
+      "repository": "https://github.com/medic/bikram-sambat",
+      "commit": "aeaa7b88332384bddeea98c2445308d437966641",
+      "upstreamPath": "test-data/daysInMonth.json",
+      "file": "medic-bikram-sambat/daysInMonth.json",
+      "format": "medic-json",
+      "license": "Apache-2.0",
+      "retrieved": "2026-10-13"
+    },
+    {
+      "id": "subeshb1-nepali-date",
+      "name": "nepali-date-converter by subeshb1 (TypeScript)",
+      "repository": "https://github.com/subeshb1/Nepali-Date",
+      "commit": "2183c30ada24a7fe678a24d58a5aa61ce8cdfa85",
+      "upstreamPath": "src/date-config.ts",
+      "file": "subeshb1-nepali-date/date-config.ts",
+      "format": "subeshb1-ts",
+      "license": "MIT",
+      "retrieved": "2026-10-13"
+    },
+    {
+      "id": "ashok095-bikram-sambat",
+      "name": "bikram-sambat by ashok095 (Python)",
+      "repository": "https://github.com/ashok095/bikram-sambat",
+      "commit": "d5402e1d57acb555cd870884cf2685b54159371f",
+      "upstreamPath": "bikram_sambat/data/calendar_data.py",
+      "file": "ashok095-bikram-sambat/calendar_data.py",
+      "format": "ashok095-py",
+      "license": "MIT",
+      "retrieved": "2026-10-13",
+      "note": "States that it was compiled partly from nepali-datetime, so the two are not independent."
+    },
+    {
+      "id": "remotemerge-nepali-date-converter",
+      "name": "@remotemerge/nepali-date-converter (TypeScript)",
+      "repository": "https://github.com/remotemerge/nepali-date-converter",
+      "commit": "ae66525afca92c02c389322417f83a4abac4d569",
+      "upstreamPath": "src/years.ts",
+      "file": "remotemerge-nepali-date-converter/years.ts",
+      "format": "remotemerge-ts",
+      "license": "MIT",
+      "retrieved": "2026-10-13"
+    },
+    {
+      "id": "sandipghimire-nepali-date-library",
+      "name": "nepali-date-library by SandipGhimire (TypeScript)",
+      "repository": "https://github.com/SandipGhimire/Nepali-Date-Library-NodeJS",
+      "commit": "4f3cf31138d8a186a53cc525a17d64d31f0b7e74",
+      "upstreamPath": "src/Helper/Constants.ts",
+      "file": "sandipghimire-nepali-date-library/Constants.ts",
+      "format": "sandipghimire-ts",
+      "license": "MIT",
+      "retrieved": "2026-10-13"
+    }
+  ]
+}

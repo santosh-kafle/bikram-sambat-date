@@ -1,0 +1,41 @@
+{
+  "$comment": "Inputs to scripts/build-calendar.ts besides the source tables. See docs/data-sources.md for the policy behind each field.",
+  "minYear": 1975,
+  "maxYear": 2083,
+  "maxYearReason": "2083 is the latest year whose calendar the Nepal Panchanga Nirnayak Samiti has published. Later years in every source are projections, and they disagree with each other by up to two days on New Year's Day (see docs/data-sources.md).",
+  "anchor": {
+    "bs": "2083-01-01",
+    "ad": "2026-04-14",
+    "evidence": "Hamro Patro; Nepali New Year 2083 was celebrated on 14 April 2026."
+  },
+  "resolutions": {
+    "1975": {
+      "use": "nepali-datetime",
+      "reason": "nepali-datetime, ashok095 and remotemerge agree; only medic differs (Bhadra/Asoj). The Surya Siddhanta model agrees with the majority."
+    },
+    "1977": {
+      "use": "nepali-datetime",
+      "reason": "nepali-datetime, medic and ashok095 agree; remotemerge and sandipghimire each differ from everyone else."
+    },
+    "1981": {
+      "use": "nepali-datetime",
+      "reason": "Four sources agree; only remotemerge differs (Falgun/Chaitra). The Surya Siddhanta model agrees with the majority."
+    },
+    "1989": {
+      "use": "medic-bikram-sambat",
+      "reason": "medic, remotemerge and sandipghimire agree against nepali-datetime and ashok095 (which derives from nepali-datetime). The Surya Siddhanta model also starts Mangsir on the majority's day."
+    },
+    "1991": {
+      "use": "nepali-datetime",
+      "reason": "Four sources agree; only medic differs (Mangsir/Poush). The Surya Siddhanta model agrees with the majority."
+    },
+    "1993": {
+      "use": "medic-bikram-sambat",
+      "reason": "Low confidence. medic, remotemerge and sandipghimire agree against nepali-datetime and ashok095 (Ashar/Shrawan). The Surya Siddhanta model sides with nepali-datetime, but it often starts Shrawan a day late, so it cannot settle this month."
+    },
+    "1998": {
+      "use": "nepali-datetime",
+      "reason": "Low confidence. Four sources agree; only remotemerge differs (Bhadra/Asoj). The Surya Siddhanta model sides with remotemerge here."
+    }
+  }
+}

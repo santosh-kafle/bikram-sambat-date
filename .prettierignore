@@ -1,0 +1,7 @@
+dist
+coverage
+data/sources
+src/data/calendar.generated.ts
+package-lock.json
+data/REPORT.md
+.claude
