@@ -31,6 +31,8 @@ src/
   bs-date.ts                BsDate, the immutable date value
   convert.ts                adToBs, bsToAd, supportedRange
   fiscal-year.ts            FiscalYear, fiscalYearOf
+  format.ts                 format and parse patterns
+  locale.ts                 month and weekday names, digits
   errors.ts                 BikramSambatError and subclasses
   core/
     gregorian.ts            Gregorian ↔ day number, weekday

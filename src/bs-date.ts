@@ -13,7 +13,17 @@ import {
   dayNumberToBs,
   monthConfidence,
 } from './core/table.js';
-import { InvalidDateError, ProjectedDateError } from './errors.js';
+import {
+  DateParseError,
+  InvalidDateError,
+  ProjectedDateError,
+} from './errors.js';
+import {
+  DEFAULT_PATTERN,
+  formatFields,
+  type FormatOptions,
+  parseFields,
+} from './format.js';
 
 const pad = (n: number, width: number): string =>
   String(n).padStart(width, '0');
@@ -125,6 +135,41 @@ export class BsDate {
     return BsDate.fromInstant(Date.now(), options);
   }
 
+  /**
+   * Reads a BS date from a string. Digits may be ASCII or Devanagari, and
+   * month and weekday names may be English or Nepali in any common spelling.
+   * See docs/formatting.md for the pattern tokens.
+   *
+   * ```ts
+   * BsDate.parse('2083-04-01');
+   * BsDate.parse('१ साउन २०८३', 'D MMMM YYYY');
+   * BsDate.parse('1 Shrawan 2083', 'D MMMM YYYY');
+   * ```
+   *
+   * @param pattern defaults to `YYYY-MM-DD`.
+   * @throws {DateParseError} if the string does not match the pattern, or
+   *   names a weekday the date does not fall on.
+   * @throws {InvalidDateError} if it matches but the date does not exist,
+   *   such as 2083-01-32.
+   * @throws {DateOutOfRangeError} if the year is outside the supported range.
+   * @throws {ProjectedDateError} with `{ strict: true }`, if the year is
+   *   projected.
+   */
+  static parse(
+    text: string,
+    pattern: string = DEFAULT_PATTERN,
+    options: ConversionOptions = {},
+  ): BsDate {
+    const fields = parseFields(text, pattern);
+    const date = BsDate.of(fields.year, fields.month, fields.day, options);
+    if (fields.weekday !== undefined && fields.weekday !== date.weekday) {
+      throw new DateParseError(
+        `'${text}' names the wrong weekday: ${date.toString()} is not that day`,
+      );
+    }
+    return date;
+  }
+
   /** Orders two dates: negative if `a` is earlier, 0 if equal, positive if later. */
   static compare(a: BsDate, b: BsDate): number {
     return a.#dayNumber - b.#dayNumber;
@@ -176,6 +221,24 @@ export class BsDate {
   /** Whether this date is later than `other`. */
   isAfter(other: BsDate): boolean {
     return this.#dayNumber > other.#dayNumber;
+  }
+
+  /**
+   * Formats the date with a pattern. See docs/formatting.md for the tokens.
+   *
+   * ```ts
+   * const date = BsDate.of(2083, 4, 1);
+   * date.format('D MMMM YYYY, dddd'); // '1 Shrawan 2083, Friday'
+   * date.format('D MMMM YYYY, dddd', { locale: 'ne' }); // '१ साउन २०८३, शुक्रवार'
+   * ```
+   *
+   * @param pattern defaults to `YYYY-MM-DD`.
+   */
+  format(
+    pattern: string = DEFAULT_PATTERN,
+    options: FormatOptions = {},
+  ): string {
+    return formatFields(this, pattern, options);
   }
 
   /** The date as `YYYY-MM-DD`, such as `2083-01-01`. */

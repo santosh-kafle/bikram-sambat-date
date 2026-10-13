@@ -79,6 +79,23 @@ ad.isBefore(date); // true
 
 `BsDate` is immutable.
 
+### Formatting and parsing
+
+```ts
+const date = BsDate.of(2083, 4, 1);
+date.format('D MMMM YYYY, dddd'); // '1 Shrawan 2083, Friday'
+date.format('D MMMM YYYY, dddd', { locale: 'ne' }); // '१ साउन २०८३, शुक्रवार'
+
+BsDate.parse('2083-04-01'); // default pattern YYYY-MM-DD
+BsDate.parse('१ साउन २०८३', 'D MMMM YYYY'); // Devanagari digits and names
+BsDate.parse('1 Saun 2083', 'D MMMM YYYY'); // common spellings
+```
+
+Parsing is strict about structure and forgiving about spelling. It accepts
+ASCII or Devanagari digits and English or Nepali names in any common
+spelling, and it checks any weekday in the string against the date. See
+[docs/formatting.md](docs/formatting.md) for the tokens.
+
 ### Instants and Kathmandu time
 
 A `Date` (or a database timestamp) is an instant, which falls on different
@@ -157,12 +174,12 @@ BsDate.of(2090, 1, 1, { strict: true }); // throws ProjectedDateError
 
 ### Errors
 
-| Error                 | When                                                                           |
-| --------------------- | ------------------------------------------------------------------------------ |
-| `DateOutOfRangeError` | The date is outside the supported range.                                       |
-| `ProjectedDateError`  | With `{ strict: true }`: the date is projected, not published.                 |
-| `InvalidDateError`    | The date does not exist, such as 32 Baisakh 2083 or 30 February.               |
-| `DateParseError`      | A string is not in the expected format, such as `FiscalYear.parse('2083-84')`. |
+| Error                 | When                                                                          |
+| --------------------- | ----------------------------------------------------------------------------- |
+| `DateOutOfRangeError` | The date is outside the supported range.                                      |
+| `ProjectedDateError`  | With `{ strict: true }`: the date is projected, not published.                |
+| `InvalidDateError`    | The date does not exist, such as 32 Baisakh 2083 or 30 February.              |
+| `DateParseError`      | A string is not in the expected format, such as `BsDate.parse('2083/04/01')`. |
 
 All extend `BikramSambatError`. `ProjectedDateError` also extends
 `DateOutOfRangeError`, so code that handles out-of-range dates handles it
@@ -199,8 +216,8 @@ Keep the package up to date so that dates in the coming year are
    2200, with `confidence` and `{ strict: true }`.
 3. **Kathmandu time and fiscal year (done):** `fromInstant`, `today`,
    `toInstant`, and `FiscalYear`.
-4. **Formatting and parsing:** format tokens, Nepali month and weekday
-   names, Devanagari digits, strict parsing.
+4. **Formatting and parsing (done):** `format` and `BsDate.parse` with
+   English and Nepali names and Devanagari digits.
 5. **Arithmetic:** add days, months and years; differences; month
    boundaries; month grids.
 6. **NestJS helpers:** `@IsBsDate()` validator, transformer and pipe, in a
@@ -226,6 +243,8 @@ npm run data:calibrate # score the projection against published years
   published calendars are computed, and how accurate that is.
 - [docs/time-and-fiscal-year.md](docs/time-and-fiscal-year.md) explains
   instants, Kathmandu time and the fiscal year.
+- [docs/formatting.md](docs/formatting.md) lists the format tokens and how
+  parsing reads strings.
 
 ## License
 

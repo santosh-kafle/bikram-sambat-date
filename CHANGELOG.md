@@ -8,6 +8,17 @@ All notable changes to this project are recorded here. The format follows
 
 ### Added
 
+- **Formatting:** `BsDate#format(pattern?, { locale })`.
+  - Tokens: `YYYY YY MMMM MMM MM M DD D dddd ddd d` and `[literal]`.
+  - Locales `en` and `ne`; `ne` writes digits in Devanagari. Nepali names
+    match Hamro Patro.
+- **Parsing:** `BsDate.parse(text, pattern?, options?)`.
+  - It is strict about structure and accepts ASCII or Devanagari digits.
+  - English and Nepali names match in any case and common spellings.
+  - A weekday in the string is checked against the date.
+- **Digits:** `toDevanagariDigits` and `toAsciiDigits`, and the `Locale` and
+  `FormatOptions` types.
+- **Docs:** `docs/formatting.md`.
 - **Kathmandu time:** `BsDate.fromInstant(date | epochMs)`, `BsDate.today()`
   and `BsDate#toInstant()`.
   - Instants are read in Asia/Kathmandu whatever the server's time zone.

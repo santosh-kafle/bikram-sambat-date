@@ -30,3 +30,5 @@ export {
   ProjectedDateError,
 } from './errors.js';
 export { FiscalYear, fiscalYearOf } from './fiscal-year.js';
+export type { FormatOptions } from './format.js';
+export { type Locale, toAsciiDigits, toDevanagariDigits } from './locale.js';
