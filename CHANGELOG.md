@@ -6,6 +6,12 @@ All notable changes to this project are recorded here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- Releases are published by GitHub Actions with npm trusted publishing, so
+  each version carries a provenance statement linking it to the commit it
+  was built from.
+
 ## [0.1.0] - 2026-10-13
 
 First release.

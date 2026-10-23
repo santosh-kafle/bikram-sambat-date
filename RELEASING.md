@@ -37,20 +37,49 @@
    and `package.json`. `prepublishOnly` runs the checks and the build
    again.
 
-7. **Commit, tag and publish:**
+7. **Commit, tag and push:**
 
    ```sh
    git commit -am "release x.y.z"
    git tag vx.y.z
-   npm publish
    git push && git push --tags
    ```
 
-   On the first publish, run `npm login` first and make sure the account
-   has two-factor authentication enabled.
+   The tag starts the **Release** workflow (`.github/workflows/release.yml`).
+   It checks that the tag matches `package.json`, runs every check, and
+   publishes to npm with provenance. It then creates the GitHub release with
+   the changelog section as its notes. Follow it under the repository's
+   **Actions** tab.
 
-8. **Create a GitHub release** from the tag, with the changelog section as
-   its notes.
+8. **Confirm** that `npm view bikram-sambat-date version` shows the new
+   version. A new version can take a few minutes to appear.
+
+### If the workflow cannot publish
+
+Publish from your machine instead, after step 7:
+
+```sh
+npm whoami        # if not logged in: npm login
+npm publish       # confirms with your passkey in the browser
+```
+
+Then create the GitHub release by hand: **Releases** → **Draft a new
+release**, choose the tag, and paste the changelog section.
+
+## One-time setup: trusted publishing
+
+The Release workflow authenticates to npm with GitHub's OIDC identity
+instead of a token. npm has to be told to trust it, once:
+
+1. On npmjs.com, open the package → **Settings** → **Trusted Publisher**.
+2. Choose **GitHub Actions** and enter:
+   - organization or user: `santosh-kafle`
+   - repository: `bikram-sambat-date`
+   - workflow filename: `release.yml`
+   - environment: leave empty
+3. Save. Then, under **Publishing access**, choose **Require two-factor
+   authentication and disallow tokens**. The workflow keeps working, and no
+   token, leaked or not, can publish the package.
 
 ## Every year: publishing a new calendar year
 
