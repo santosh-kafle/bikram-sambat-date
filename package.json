@@ -1,6 +1,6 @@
 {
   "name": "bikram-sambat-date",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Accurate, time-zone-safe Bikram Sambat (BS) ↔ Gregorian (AD) date conversion for Node.js backends, with a cross-checked calendar table.",
   "keywords": [
     "bikram-sambat",
