@@ -6,6 +6,12 @@ All notable changes to this project are recorded here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- The Release workflow stages each version on npm, with provenance, and the
+  maintainer approves it with two-factor authentication before it is
+  published.
+
 ## [0.2.0] - 2026-11-16
 
 ### Added
@@ -20,9 +26,10 @@ All notable changes to this project are recorded here. The format follows
 
 ### Changed
 
-- Releases are published by GitHub Actions with npm trusted publishing, so
-  each version carries a provenance statement linking it to the commit it
-  was built from.
+- A Release workflow publishes from GitHub Actions with npm trusted
+  publishing, so versions carry a provenance statement linking them to the
+  commit they were built from. 0.2.0 itself was published from the
+  maintainer's machine and has no provenance.
 
 ## [0.1.0] - 2026-10-13
 

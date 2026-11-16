@@ -45,26 +45,64 @@
    git push && git push --tags
    ```
 
+   Create the tag only after the commit has gone through: the workflow
+   checks that the tag's `package.json` has the new version.
+
    The tag starts the **Release** workflow (`.github/workflows/release.yml`).
    It checks that the tag matches `package.json`, runs every check, and
-   publishes to npm with provenance. It then creates the GitHub release with
-   the changelog section as its notes. Follow it under the repository's
-   **Actions** tab.
+   stages the package on npm with provenance. It also drafts the GitHub
+   release with the changelog section as its notes. Follow it under the
+   repository's **Actions** tab, or with `gh run watch`.
 
-8. **Confirm** that `npm view bikram-sambat-date version` shows the new
-   version. A new version can take a few minutes to appear.
+8. **Approve the staged version.** It is not public until you do:
 
-### If the workflow cannot publish
+   ```sh
+   npm stage list bikram-sambat-date   # wait until it is no longer 'validating'
+   npm stage approve <stage-id>        # confirms with your passkey
+   ```
 
-Publish from your machine instead, after step 7:
+   or approve it on npmjs.com. `npm stage reject <stage-id>` discards it
+   instead.
+
+9. **Publish the GitHub release** that the workflow drafted:
+
+   ```sh
+   gh release edit vx.y.z --draft=false
+   ```
+
+10. **Confirm** that `npm view bikram-sambat-date version` shows the new
+    version. A new version can take a few minutes to appear.
+
+### If the workflow cannot stage
+
+Stage from your machine instead, after step 7, then continue with step 8:
 
 ```sh
-npm whoami        # if not logged in: npm login
-npm publish       # confirms with your passkey in the browser
+npm whoami          # if not logged in: npm login
+npm stage publish
 ```
 
-Then create the GitHub release by hand: **Releases** → **Draft a new
-release**, choose the tag, and paste the changelog section.
+A version staged from your machine has no provenance. Create the GitHub
+release by hand, as the workflow did not:
+
+```sh
+gh release create vx.y.z --verify-tag --title vx.y.z --notes-file <notes>
+```
+
+with the version's changelog section in `<notes>`.
+
+### If the tag points at the wrong commit
+
+When the workflow failed before staging, nothing was released, so the tag
+can move:
+
+```sh
+git tag -f vx.y.z <commit>
+git push --force origin vx.y.z
+```
+
+GitHub runs the workflow file from the tagged commit, so a fix to the
+workflow also needs the tag moved to the commit with the fix.
 
 ## One-time setup: trusted publishing
 
@@ -77,9 +115,16 @@ instead of a token. npm has to be told to trust it, once:
    - repository: `bikram-sambat-date`
    - workflow filename: `release.yml`
    - environment: leave empty
-3. Save. Then, under **Publishing access**, choose **Require two-factor
-   authentication and disallow tokens**. The workflow keeps working, and no
-   token, leaked or not, can publish the package.
+3. Leave **publish directly** unticked. The workflow can then only stage
+   versions, and each one waits for your approval: a compromised workflow
+   cannot publish on its own. A plain `npm publish` from the workflow fails
+   with `E403 OIDC permission denied for this action`.
+4. Save, and check that the publisher is listed. Then, under **Publishing
+   access**, choose **Require two-factor authentication and disallow
+   tokens**, so no token, leaked or not, can publish the package.
+
+If the workflow's publish step fails with `E404 Not Found - PUT`, npm did
+not accept the workflow as a trusted publisher: check the fields above.
 
 ## Every year: publishing a new calendar year
 

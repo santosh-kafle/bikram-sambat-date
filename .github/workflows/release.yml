@@ -1,9 +1,11 @@
 name: Release
 
-# Publishes to npm when a version tag (v1.2.3) is pushed, using npm trusted
-# publishing: GitHub's OIDC token proves the workflow's identity, so no npm
-# token is stored anywhere, and npm attaches provenance to the package.
-# One-time setup on npmjs.com is described in RELEASING.md.
+# Stages a release on npm when a version tag (v1.2.3) is pushed, using npm
+# trusted publishing: GitHub's OIDC token proves the workflow's identity, so
+# no npm token is stored anywhere, and npm attaches provenance to the
+# package. The version goes live only when the owner approves it with 2FA.
+# The GitHub release is created as a draft, to publish after that approval.
+# See RELEASING.md.
 
 on:
   push:
@@ -23,8 +25,10 @@ jobs:
           node-version: 24
           registry-url: https://registry.npmjs.org
           cache: npm
-      # Trusted publishing needs npm 11.5.1 or newer.
+      # Trusted publishing needs npm 11.5.1 or newer, and `npm stage` a newer
+      # one still. Fail here, not after the tests, if the command is missing.
       - run: npm install -g npm@latest
+      - run: npm stage --help > /dev/null
 
       - name: Check the tag matches package.json
         run: |
@@ -38,10 +42,11 @@ jobs:
       - run: npm run test:tz
       - run: npm run build
       - run: npm run check:package
-      # prepublishOnly runs `npm run check` and the build again first.
-      - run: npm publish
+      # The trusted publisher only allows staging. prepublishOnly runs
+      # `npm run check` and the build again first.
+      - run: npm stage publish
 
-      - name: Create the GitHub release from the changelog
+      - name: Draft the GitHub release from the changelog
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -52,5 +57,5 @@ jobs:
             found && /^\[[^]]+\]: / { exit }
             found
           ' CHANGELOG.md > release-notes.md
-          gh release create "$GITHUB_REF_NAME" --verify-tag \
+          gh release create "$GITHUB_REF_NAME" --verify-tag --draft \
             --title "$GITHUB_REF_NAME" --notes-file release-notes.md
