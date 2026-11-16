@@ -1,12 +1,19 @@
 # NestJS
 
-`bikram-sambat-date/nestjs` validates, transforms and parses BS dates in
-NestJS applications. It needs `@nestjs/common`, `class-validator` and
+`bikram-sambat-date/nestjs` validates, transforms and parses BS dates and
+fiscal years in NestJS applications. It needs `@nestjs/common`, `class-validator` and
 `class-transformer`. They are optional peer dependencies, so the core
 package never installs them.
 
 ```ts
-import { IsBsDate, ParseBsDatePipe, ToBsDate } from 'bikram-sambat-date/nestjs';
+import {
+  IsBsDate,
+  IsFiscalYear,
+  ParseBsDatePipe,
+  ParseFiscalYearPipe,
+  ToBsDate,
+  ToFiscalYear,
+} from 'bikram-sambat-date/nestjs';
 ```
 
 ## Validating a DTO field: `@IsBsDate()`
@@ -93,6 +100,42 @@ library's explanation.
 | `pattern`  | `YYYY-MM-DD` | The [format pattern](formatting.md) to parse with.    |
 | `strict`   | `false`      | Reject projected dates.                               |
 | `optional` | `false`      | Pass a missing or empty value through as `undefined`. |
+
+## Fiscal years
+
+Fiscal years have the same three helpers. They read labels such as
+`2083/84` or `2083/2084` (see
+[the fiscal year](time-and-fiscal-year.md#the-fiscal-year)), within the supported range
+1975/76–2199/00.
+
+```ts
+class SalesReportQueryDto {
+  @ToFiscalYear() // '2083/84' → FiscalYear
+  @IsFiscalYear() // otherwise 400: "fy must be a fiscal year (such as 2083/84)"
+  fy!: FiscalYear;
+}
+
+@Get('reports/sales') // ?fy=2083/84
+sales(@Query('fy', ParseFiscalYearPipe) fy: FiscalYear) {
+  fy.firstDay.toInstant(); // midnight on 1 Shrawan in Kathmandu
+}
+```
+
+- `@IsFiscalYear(validationOptions?)` takes class-validator's usual
+  options, such as `{ each: true }`. `isFiscalYear(value)` is the same
+  check as a plain function.
+- `@ToFiscalYear()` behaves as `@ToBsDate()` does: a label that does not
+  parse is left for `@IsFiscalYear()` to report, arrays are converted
+  element by element, and serializing gives the label back.
+- `ParseFiscalYearPipe` answers 400 Bad Request with
+  `Validation failed (fiscal year such as 2083/84 is expected): …`. It takes
+  `{ optional: true }`, as `ParseBsDatePipe` does.
+- Prefer a query parameter. In a route parameter the slash has to be
+  URL-encoded (`/reports/2083%2F84`).
+
+There is no `strict` option. A fiscal year ends in the next BS year, whose
+calendar is published only a few months before it begins. A published-only
+check would reject the current fiscal year from Shrawan until then.
 
 ## Responses and storage
 

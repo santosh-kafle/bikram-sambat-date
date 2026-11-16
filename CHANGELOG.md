@@ -6,6 +6,16 @@ All notable changes to this project are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Fiscal years in NestJS**, in `bikram-sambat-date/nestjs`.
+  - `@IsFiscalYear()` and `isFiscalYear` validate labels such as `2083/84`
+    or `2083/2084`.
+  - `@ToFiscalYear()` converts them to `FiscalYear` and back, and works with
+    `enableImplicitConversion`.
+  - `ParseFiscalYearPipe` parses route and query parameters and answers
+    400 Bad Request for a bad label.
+
 ### Changed
 
 - Releases are published by GitHub Actions with npm trusted publishing, so

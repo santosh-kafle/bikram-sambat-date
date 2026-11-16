@@ -150,7 +150,12 @@ Kathmandu's clock history and querying records by BS day.
 ### NestJS
 
 ```ts
-import { IsBsDate, ParseBsDatePipe, ToBsDate } from 'bikram-sambat-date/nestjs';
+import {
+  IsBsDate,
+  ParseBsDatePipe,
+  ParseFiscalYearPipe,
+  ToBsDate,
+} from 'bikram-sambat-date/nestjs';
 
 class SalesReportQueryDto {
   @ToBsDate() // '2083-04-01' → BsDate (ValidationPipe with transform: true)
@@ -160,7 +165,13 @@ class SalesReportQueryDto {
 
 @Get('sales/:date')
 salesOn(@Param('date', ParseBsDatePipe) date: BsDate) {}
+
+@Get('reports/sales') // ?fy=2083/84
+salesIn(@Query('fy', ParseFiscalYearPipe) fy: FiscalYear) {}
 ```
+
+Fiscal years have the same helpers: `@IsFiscalYear()`, `@ToFiscalYear()`
+and `ParseFiscalYearPipe`.
 
 The NestJS helpers live in a separate entry point. `@nestjs/common`,
 `class-validator` and `class-transformer` are optional peer dependencies,
@@ -260,7 +271,8 @@ Keep the package up to date so that dates in the coming year are
 5. **Arithmetic (done):** add and diff days, months and years; month and
    year boundaries; `monthGrid`.
 6. **NestJS helpers (done):** `@IsBsDate()`, `@ToBsDate()` and
-   `ParseBsDatePipe` in `bikram-sambat-date/nestjs`.
+   `ParseBsDatePipe` in `bikram-sambat-date/nestjs`, and the same for
+   fiscal years.
 7. **Release readiness (done):** CI on Node 22, 24 and 26; package checks;
    [RELEASING.md](RELEASING.md).
 
@@ -292,7 +304,7 @@ publishes a new calendar year.
 - [docs/arithmetic.md](docs/arithmetic.md) explains adding and comparing
   dates, and month grids.
 - [docs/nestjs.md](docs/nestjs.md) covers validation, transformation, the
-  pipe, and how to store BS dates.
+  pipes, fiscal years, and how to store BS dates.
 
 ## License
 

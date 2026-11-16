@@ -3,12 +3,16 @@ import { BadRequestException, ValidationPipe } from '@nestjs/common';
 import { instanceToPlain, plainToInstance } from 'class-transformer';
 import { IsOptional, validate } from 'class-validator';
 import { describe, expect, it } from 'vitest';
-import { BsDate } from '../src/index.js';
+import { BsDate, FiscalYear } from '../src/index.js';
 import {
   IsBsDate,
   isBsDate,
+  IsFiscalYear,
+  isFiscalYear,
   ParseBsDatePipe,
+  ParseFiscalYearPipe,
   ToBsDate,
+  ToFiscalYear,
 } from '../src/nestjs/index.js';
 
 /** Records what TypeScript's emitDecoratorMetadata would for `name: type`. */
@@ -212,5 +216,124 @@ describe('ParseBsDatePipe', () => {
     expect(new ParseBsDatePipe().transform('2083-04-01')).toBeInstanceOf(
       BsDate,
     );
+  });
+});
+
+describe('isFiscalYear', () => {
+  it('accepts fiscal year labels and FiscalYear values', () => {
+    expect(isFiscalYear('2083/84')).toBe(true);
+    expect(isFiscalYear('2083/2084')).toBe(true);
+    expect(isFiscalYear('2199/00')).toBe(true);
+    expect(isFiscalYear(FiscalYear.of(2083))).toBe(true);
+  });
+
+  it('rejects anything else', () => {
+    for (const value of [
+      '2083/85',
+      '2083-84',
+      '2083',
+      '2200/01',
+      '',
+      2083,
+      null,
+      BsDate.of(2083, 4, 1),
+    ]) {
+      expect(isFiscalYear(value), String(value)).toBe(false);
+    }
+  });
+});
+
+describe('@IsFiscalYear and @ToFiscalYear with ValidationPipe', () => {
+  class SalesReportQueryDto {
+    @ToFiscalYear()
+    @IsFiscalYear()
+    fy!: FiscalYear;
+
+    @IsOptional()
+    @ToFiscalYear()
+    @IsFiscalYear({ each: true })
+    compareWith?: FiscalYear[];
+  }
+  declareType(SalesReportQueryDto.prototype, 'fy', FiscalYear);
+  declareType(SalesReportQueryDto.prototype, 'compareWith', Array);
+
+  // CartNext's global pipe (src/app.setup.ts).
+  const pipe = new ValidationPipe({
+    whitelist: true,
+    transform: true,
+    transformOptions: { enableImplicitConversion: true },
+  });
+  const run = (query: object) =>
+    pipe.transform(query, { type: 'query', metatype: SalesReportQueryDto });
+
+  it('turns labels into FiscalYear values', async () => {
+    const dto = (await run({
+      fy: '2083/84',
+      compareWith: ['2081/82', '2082/2083'],
+    })) as SalesReportQueryDto;
+    expect(dto.fy).toBeInstanceOf(FiscalYear);
+    expect(dto.fy.firstDay.toString()).toBe('2083-04-01');
+    expect(dto.compareWith?.map(String)).toEqual(['2081/82', '2082/83']);
+  });
+
+  it('answers 400 with the validation message', async () => {
+    try {
+      await run({ fy: '2083/85', compareWith: ['2081/82', 'x'] });
+      expect.unreachable();
+    } catch (error) {
+      expect(error).toBeInstanceOf(BadRequestException);
+      expect((error as BadRequestException).getResponse()).toMatchObject({
+        statusCode: 400,
+        message: [
+          'fy must be a fiscal year (such as 2083/84)',
+          'each value in compareWith must be a fiscal year (such as 2083/84)',
+        ],
+      });
+    }
+  });
+
+  it('serializes FiscalYear back to labels', () => {
+    const dto = plainToInstance(SalesReportQueryDto, {
+      fy: '2083/2084',
+      compareWith: ['2082/83'],
+    });
+    const plain = { fy: '2083/84', compareWith: ['2082/83'] };
+    expect(instanceToPlain(dto)).toEqual(plain);
+    expect(JSON.parse(JSON.stringify(dto))).toEqual(plain);
+  });
+});
+
+describe('ParseFiscalYearPipe', () => {
+  it('parses a route or query value', () => {
+    const fy = new ParseFiscalYearPipe().transform('2083/84');
+    expect(fy).toBeInstanceOf(FiscalYear);
+    expect(fy?.label).toBe('2083/84');
+  });
+
+  it('answers 400 for anything else', () => {
+    const pipe = new ParseFiscalYearPipe();
+    for (const value of ['2083/85', '2200/01', 'this year', undefined, 2083]) {
+      expect(() => pipe.transform(value), String(value)).toThrow(
+        BadRequestException,
+      );
+    }
+    expect(() => pipe.transform('2083/85')).toThrow(
+      /^Validation failed \(fiscal year such as 2083\/84 is expected\)/,
+    );
+  });
+
+  it('lets a missing value through when optional', () => {
+    const pipe = new ParseFiscalYearPipe({ optional: true });
+    expect(pipe.transform(undefined)).toBeUndefined();
+    expect(pipe.transform('')).toBeUndefined();
+    expect(() => pipe.transform('nope')).toThrow(BadRequestException);
+  });
+
+  it('can be created by Nest without arguments', () => {
+    const optional = Reflect.getMetadata(
+      'optional:paramtypes',
+      ParseFiscalYearPipe,
+    ) as number[] | undefined;
+    expect(optional).toContain(0);
   });
 });
